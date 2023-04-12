@@ -1,0 +1,67 @@
+[project]
+name = "getswish"
+authors = [{ name = "Daniel Nibon", email = "daniel@nibon.se" }]
+license = { file = "LICENSE" }
+readme = "README.md"
+keywords = ["swish", "getswish", "payment", "payout"]
+requires-python = ">=3.10"
+dependencies = [
+    "requests >= 2.27",
+    "rsa >= 4.7.2",
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dynamic = ["version", "description"]
+
+[project.urls]
+Source = "https://github.com/nibon/getswish"
+
+[project.optional-dependencies]
+tests = [
+    "pytest >= 7",
+    "pytest-mock",
+    "pytest-cov >= 4",
+    "ruff",
+]
+deploy = [
+    "flit >= 3.8",
+]
+
+[build-system]
+requires = ["flit_core >=3.8.0,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.ruff.isort]
+force-sort-within-sections = true
+
+[tool.ruff]
+select = ["E", "F"]
+ignore = []
+fixable = [
+    "A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE",
+    "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH",
+    "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"
+]
+unfixable = []
+exclude = [
+    "venv",
+    ".venv",
+    "tests",
+    ".git",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "dist",
+    "node_modules",
+]
+line-length = 120
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+target-version = "py311"
+
+[tool.ruff.mccabe]
+max-complexity = 10
