@@ -25,7 +25,7 @@ class Environment:
 
 
 TestEnvironment = Environment(name="test", base="https://mss.cpc.getswish.net/swish-cpcapi/api/")
-ProductionEnvironment = Environment(name="production", base="https://cpc.getswish.net/swish-cpcapi/")
+ProductionEnvironment = Environment(name="production", base="https://cpc.getswish.net/swish-cpcapi/api/")
 
 TestCertificates = Certificates(
     Certificate(
