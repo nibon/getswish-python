@@ -3,25 +3,27 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 
 import requests
 import rsa
 from requests import Response
 
-from .environments import Certificates, Environment
+from .environments import Certificates, Environment, TestEnvironment, TestCertificates
 from .exceptions import SwishError
 from .models import Payment, Payout, Refund
 from .utils import generate_transaction_id
 
-cert_base = Path(__file__).parent.parent.parent.resolve() / "mss_test_1.9" / "Getswish_Test_Certificates"
-
 
 @dataclass
 class SwishClient:
-    environment: Environment
-    certificates: Certificates
-    merchant_swish_number: str = "12345679304"
+    environment: Environment = None
+    certificates: Certificates = None
+    merchant_swish_number: str = "1234679304"
+
+    def __post_init__(self):
+        if self.environment is None and self.certificates is None:
+            self.environment = TestEnvironment
+            self.certificates = TestCertificates
 
     def _url(self, version: str, path: str) -> str:
         return f"{self.environment.base}{version}{path}"
