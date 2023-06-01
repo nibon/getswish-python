@@ -24,13 +24,13 @@ The signing certificate, private key and serial is only required when using the 
 ## Example - Test Client
 
 The example code uses the test environment and certificates in this library.
+
 ```python
 import getswish
 
 swish_client = getswish.SwishClient()
 
 callback_url = "https://example.com/callback/"
-
 
 ### Example - Commerce API
 
@@ -55,18 +55,25 @@ payment_refund = swish_client.create_refund(
     payment_e.id, callback_url, payment_e.payer_alias, payment_e.amount
 )
 
-
 ### Example - Payout API
 
+# Generate a merchant specific reference.
+# This reference could be order id or similar.
+# Use generate_transaction_id for convenience.
+
+from getswish.utils import generate_transaction_id
+
+reference_id = generate_transaction_id()
+
 # Perform a payment request
+
 payout = swish_client.create_payout(
-    100.00, callback_url, "46701234567", message="Product name."
+    reference_id, "46701234567", "197001019876", 10.00, callback_url, message="Test payout message."
 )
 
 # Retrieve info about the payout
 payout_retrieved = swish_client.retrieve_payout(payout.payout_instruction_uuid)
 ```
-
 
 ## Example - Production Client
 
@@ -74,7 +81,6 @@ In production the environment must be set
 to `swish.ProductionEnvironment` and all path must be modified to the production certificates that you have generated
 through your bank and swish company portals. The example below is the default configuration for the test certificates
 and environment. Replace all paths and files with your generated production instances.
-
 
 ```python
 from pathlib import Path
@@ -95,7 +101,6 @@ swish_client = getswish.SwishClient(
     merchant_swish_number="1234679304",
 )
 ```
-
 
 ## Example - Production Client with payout
 
@@ -128,10 +133,32 @@ swish_client = getswish.SwishClient(
 callback_url = "https://example.com/callback/"
 ```
 
-
 ### Generating public_serial for signing certificate
 
 The signing certificate `public_serial` is extracted from the certificate using this command on linux.
 
     openssl x509 -in Swish_Merchant_TestSigningCertificate_1234679304.pem -serial -noout
 
+## Development setup
+
+Clone the repository and set up a local virtual environment.
+
+    git clone https://github.com/nibon/getswish-python.git && cd getswish-python
+
+    python3 -m venv .venv
+    source .venv/bin/activate
+    python3 -m pip install flit
+    flit install --only-deps
+
+### Testing installing package and pytest
+
+Symlink getswish and run pytest. You might want to uninstall the getswish library depending on your workflow.
+
+    flit install --symlink
+    pytest
+
+### Testing using nox
+
+Isolated testing on configured python versions and running a coverage test.
+
+    nox
