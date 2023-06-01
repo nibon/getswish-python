@@ -16,6 +16,11 @@ def callback_url() -> str:
 
 
 @pytest.fixture
+def client_default() -> getswish.SwishClient:
+    return getswish.SwishClient()
+
+
+@pytest.fixture
 def client() -> getswish.SwishClient:
     cert_base = Path(__file__).parent.parent.resolve() / "mss_test_1.9" / "Getswish_Test_Certificates"
     return getswish.SwishClient(

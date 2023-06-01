@@ -24,6 +24,14 @@ class RequestsMockResponse:
             raise HTTPError()
 
 
+def test_client_init_default(client_default):
+    assert client_default is not None
+
+
+def test_client_init(client):
+    assert client is not None
+
+
 def test_url(client):
     version, path = "v1", "path"
     assert client._url(version, path) == f"{client.environment.base}{version}{path}"
