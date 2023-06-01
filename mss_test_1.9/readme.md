@@ -3,7 +3,10 @@
 This directory (zip-file) contains a *User Guide* on how to use the
 *Merchant Swish Simulator (MSS)* together with the test
 *authentication* certificates that are needed in order to properly
-communicate with the server.
+communicate with the server. 
+Please also look at our updated documentation,
+https://developer.swish.nu/
+https://developer.swish.nu/api/mss/v1
 
 For payout requests a specific *Swish_Merchant_TestSigningCertificate*
 is provided that **must** be used to sign the payout request payload
@@ -40,23 +43,24 @@ caller.
 
 `
 ./Getswish_Test_Certificates$ openssl x509 -startdate -enddate -serial -noout -in Swish_Merchant_TestCertificate_1234679304.pem 
-notBefore=May 13 07:43:13 2020 GMT
-notAfter=May 13 07:43:13 2022 GMT
-serial=0BF3A59588F654C767835FC95A53610F
+notBefore=Wed, 20 Jul 2022 14:49:34 GMT
+notAfter=Sat, 20 Jul 2024 14:49:34 GMT
+serial=4EF5C55AA5E475A3611087A4897F3F13
 
 ./Getswish_Test_Certificates$ openssl x509 -startdate -enddate -serial -noout -in Swish_Merchant_TestSigningCertificate_1234679304.pem 
-notBefore=Sep 23 12:00:20 2019 GMT
-notAfter=Sep 23 12:00:20 2021 GMT
-serial=7D70445EC8EF4D1E3A713427E973D097
+notBefore=Wed, 20 Jul 2022 14:40:25 GMT
+notAfter=Sat, 20 Jul 2024 14:40:25 GMT
+serial=51FFA3C2336C8D5B4904D53CD9FAB21D
 
 ./Getswish_Test_Certificates$ openssl x509 -startdate -enddate -serial -noout -in Swish_TechnicalSupplier_TestCertificate_9871065216.pem 
-notBefore=Oct 19 13:28:42 2018 GMT
-notAfter=Oct 19 13:28:42 2020 GMT
-serial=21E0B224ADC487718F485230A2F5C76D
+notBefore=Tue, 09 Aug 2022 09:31:29 GMT
+notAfter=Fri, 09 Aug 2024 09:31:29 GMT
+serial=43180BE273556FF6970249395357B583
 
 ./Getswish_Test_Certificates$ openssl x509 -startdate -enddate -serial -noout -in Swish_TLS_RootCA.pem 
-notBefore=Nov 10 00:00:00 2006 GMT
-notAfter=Nov 10 00:00:00 2031 GMT
+notBefore=Fri, 10 2006 00:00:00 GMT
+notAfter=Mon, 10 2031 00:00:00 GMT
 serial=083BE056904246B1A1756AC95991C74A
 
 `
+
