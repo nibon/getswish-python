@@ -26,6 +26,7 @@ tests = [
     "pytest-mock",
     "pytest-cov >= 4",
     "ruff",
+    "nox",
 ]
 deploy = [
     "flit >= 3.8",
