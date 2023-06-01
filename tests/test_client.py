@@ -14,6 +14,7 @@ class RequestsMockResponse:
     status_code: int = 200
     json_data: list[dict] | dict = ""
     headers: dict = dict
+    text: str = ""
 
     def json(self):
         return self.json_data
