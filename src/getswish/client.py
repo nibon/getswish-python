@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -13,6 +14,9 @@ from .exceptions import SwishError
 from .models import Payment, Payout, Refund
 from .utils import generate_transaction_id
 
+logger = logging.getLogger("getswish")
+logger.addHandler(logging.NullHandler())
+
 
 @dataclass
 class SwishClient:
@@ -24,6 +28,7 @@ class SwishClient:
         if self.environment is None and self.certificates is None:
             self.environment = TestEnvironment
             self.certificates = TestCertificates
+        logger.debug("getswish.env: %s", self.environment.name)
 
     def _url(self, version: str, path: str) -> str:
         return f"{self.environment.base}{version}{path}"
@@ -164,10 +169,13 @@ class SwishClient:
             "signature": self._sign_payload(payload),
         }
         response = self._requests("post", url, json=payload)
+        logger.debug("getswish.create_payout.response.text: %s", response.text)
         payout.location = response.headers.get("Location")
         return payout
 
     def retrieve_payout(self, transaction_id: str) -> Payout:
         """https://developer.swish.nu/api/payouts/v1#retrieve-payout"""
 
-        return Payout.from_service(self._requests("get", self._url("v1", f"/payouts/{transaction_id}")).json())
+        response = self._requests("get", self._url("v1", f"/payouts/{transaction_id}"))
+        logger.debug("getswish.retrieve_payout.response.text: %s", response.text)
+        return Payout.from_service(response.json())
