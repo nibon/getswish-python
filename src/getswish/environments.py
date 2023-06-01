@@ -35,4 +35,9 @@ TestCertificates = Certificates(
     Certificate(
         public=f"{cert_base}/Swish_TLS_RootCA.pem"
     ),
+    Certificate(
+        public=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.pem",
+        private_key=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.key",
+        public_serial="51FFA3C2336C8D5B4904D53CD9FAB21D",
+    ),
 )
