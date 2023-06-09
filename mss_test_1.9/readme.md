@@ -7,7 +7,7 @@ communicate with the server.
 Please also look at our updated documentation,
 https://developer.swish.nu/
 https://developer.swish.nu/api/mss/v1
-
+[Swish_Merchant_TestSigningCertificate_1234679304.p12](Getswish_Test_Certificates%2FSwish_Merchant_TestSigningCertificate_1234679304.p12)
 For payout requests a specific *Swish_Merchant_TestSigningCertificate*
 is provided that **must** be used to sign the payout request payload
 (create the signature property value). No other signing certificate

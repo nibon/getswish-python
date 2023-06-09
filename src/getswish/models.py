@@ -83,6 +83,7 @@ class Payout:
     error_code: str = None
     error_message: str = None
     additional_information: str = None
+    callback_identifier: str = None
 
     @staticmethod
     def from_service(payout_create_object: dict) -> Payout:
