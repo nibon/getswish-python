@@ -1,7 +1,7 @@
 from getswish import Payment, Payout, Refund
 from getswish.utils import camel2snake, f_name_conv
 
-from .fixtures import *
+from .fixtures import *  # noqa: F403
 
 
 def test_payment_from_service(t_payment_response):
