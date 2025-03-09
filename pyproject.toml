@@ -36,10 +36,10 @@ deploy = [
 requires = ["flit_core >=3.8.0,<4"]
 build-backend = "flit_core.buildapi"
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 force-sort-within-sections = true
 
-[tool.ruff]
+[tool.ruff.lint]
 select = ["E", "F"]
 ignore = []
 fixable = [
@@ -60,9 +60,11 @@ exclude = [
     "dist",
     "node_modules",
 ]
-line-length = 120
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
-target-version = "py312"
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 10
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
