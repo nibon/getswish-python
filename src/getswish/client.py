@@ -3,7 +3,7 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 import requests
 import rsa
@@ -156,7 +156,7 @@ class SwishClient:
             payee_ssn=payee_ssn,
             amount=amount,
             payer_alias=kwargs.pop("payer_alias", self.merchant_swish_number),
-            instruction_date=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            instruction_date=datetime.now(timezone.utc).isoformat(timespec="seconds") + "Z",
             signing_certificate_serial_number=self.certificates.signing.public_serial,
             **kwargs,
         )
