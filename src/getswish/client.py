@@ -3,7 +3,7 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 import requests
 import rsa
@@ -66,12 +66,12 @@ class SwishClient:
         return signature_b64.decode("utf-8")
 
     def create_payment(
-            self,
-            amount: int | float,
-            callback_url: str,
-            payer_alias: str = None,
-            /,
-            **kwargs,
+        self,
+        amount: int | float,
+        callback_url: str,
+        payer_alias: str = None,
+        /,
+        **kwargs,
     ) -> Payment:
         """https://developer.swish.nu/api/payment-request/v2#create-payment-request"""
 
@@ -110,13 +110,13 @@ class SwishClient:
         )
 
     def create_refund(
-            self,
-            original_payment_reference: str,
-            callback_url: str,
-            payee_alias: str,
-            amount: int | float,
-            /,
-            **kwargs,
+        self,
+        original_payment_reference: str,
+        callback_url: str,
+        payee_alias: str,
+        amount: int | float,
+        /,
+        **kwargs,
     ) -> Refund:
         """https://developer.swish.nu/api/refunds/v2#create-refund"""
 
@@ -139,14 +139,14 @@ class SwishClient:
         return Refund.from_service(self._requests("get", self._url("v1", f"/refunds/{transaction_id}")).json())
 
     def create_payout(
-            self,
-            payer_payment_reference: str,
-            payee_alias: str,
-            payee_ssn: str,
-            amount: int | float,
-            callback_url: str,
-            /,
-            **kwargs,
+        self,
+        payer_payment_reference: str,
+        payee_alias: str,
+        payee_ssn: str,
+        amount: int | float,
+        callback_url: str,
+        /,
+        **kwargs,
     ) -> Payout:
         """https://developer.swish.nu/api/payouts/v1#create-payout"""
 
@@ -156,7 +156,7 @@ class SwishClient:
             payee_ssn=payee_ssn,
             amount=amount,
             payer_alias=kwargs.pop("payer_alias", self.merchant_swish_number),
-            instruction_date=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            instruction_date=datetime.now(timezone.utc).isoformat(timespec="seconds") + "Z",
             signing_certificate_serial_number=self.certificates.signing.public_serial,
             **kwargs,
         )

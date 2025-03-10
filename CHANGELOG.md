@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-03-10
+
+### Added
+
+- Added the now documented field callbackIdentifier to Payment and Refund objects.
+- Added python 3.13 to the nox file and GitHub actions.
+
+### Changed
+
+- Updated all certificate references from `mss_test_1.9` to `mss_test_2.0` in `README.md` and `TestEnvironment`.
+- Changed `utcnow` to `now` with timezone information in the `create_payout` method.
+- Updated ruff settings in `pyproject.toml`.
+- Updated documentation and added example.
+
 ## [0.2.4] - 2023-06-09
 
 ### Added

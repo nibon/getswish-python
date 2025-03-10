@@ -6,7 +6,7 @@ from requests import HTTPError
 import getswish
 
 
-from .fixtures import *
+from .fixtures import *  # noqa F403
 
 
 @dataclass
@@ -39,7 +39,7 @@ def test_url(client):
 
 def test_sign_payload(client):
     a = client._sign_payload({"foo": "bar"})
-    assert type(a) == str
+    assert isinstance(a, str)
     assert len(a) == 684
 
 

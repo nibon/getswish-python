@@ -22,7 +22,7 @@ def client_default() -> getswish.SwishClient:
 
 @pytest.fixture
 def client() -> getswish.SwishClient:
-    cert_base = Path(__file__).parent.parent.resolve() / "mss_test_1.9" / "Getswish_Test_Certificates"
+    cert_base = Path(__file__).parent.parent.resolve() / "mss_test_2.0" / "Getswish_Test_Certificates"
     return getswish.SwishClient(
         environment=getswish.TestEnvironment,
         certificates=getswish.Certificates(
