@@ -87,7 +87,7 @@ from pathlib import Path
 import getswish
 
 cert_base = Path(__file__).parent.parent.parent.resolve()
-cert_base = cert_base / "mss_test_1.9" / "Getswish_Test_Certificates"
+cert_base = cert_base / "mss_test_2.0" / "Getswish_Test_Certificates"
 
 swish_client = getswish.SwishClient(
     environment=getswish.TestEnvironment,
@@ -111,7 +111,7 @@ from pathlib import Path
 import getswish
 
 cert_base = Path(__file__).parent.parent.parent.resolve()
-cert_base = cert_base / "mss_test_1.9" / "Getswish_Test_Certificates"
+cert_base = cert_base / "mss_test_2.0" / "Getswish_Test_Certificates"
 
 swish_client = getswish.SwishClient(
     environment=getswish.TestEnvironment,
