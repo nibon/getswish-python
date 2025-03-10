@@ -29,6 +29,7 @@ class Payment:
     error_code: str = None
     error_message: str = None
     additional_information: str = None
+    callback_identifier: str = None
 
     @staticmethod
     def from_service(payment_request_object: dict) -> Payment:
@@ -46,9 +47,29 @@ class Payment:
 
 
 @dataclass
-class Refund(Payment):
+class Refund:
     """https://developer.swish.nu/api/refunds/v2#refund-request-object"""
 
+    id: str = None
+    callback_url: str = None
+    payee_alias: str = None
+    amount: int | float = None
+    currency: str = "SEK"
+    message: str = None
+    payer_alias: str = None
+    payer_ssn: str = None
+    payment_reference: str = None
+    age_limit: str = None
+    payee_payment_reference: str = None
+    status: str = None
+    location: str = None
+    payment_request_token: str = None
+    date_created: str = None
+    date_paid: str = None
+    error_code: str = None
+    error_message: str = None
+    additional_information: str = None
+    callback_identifier: str = None
     original_payment_reference: str = None
     payer_payment_reference: str = None
 
@@ -57,6 +78,14 @@ class Refund(Payment):
         """Map service response format to local Refund class."""
 
         return Refund(**{camel2snake(k): v for k, v in refund_create_object.items()})
+
+    def to_service(self) -> dict:
+        """Remove empty fields and id which is always sent in URL before sending instance to swish service."""
+
+        def _exclude(k, v):
+            return v is None or k == "id"
+
+        return {f_name_conv(k, snake2camel): v for k, v in dataclasses.asdict(self).items() if not _exclude(k, v)}
 
 
 @dataclass
