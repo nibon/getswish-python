@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-cert_base = Path(__file__).parent.parent.parent.resolve() / "mss_test_1.9" / "Getswish_Test_Certificates"
+cert_base = Path(__file__).parent.parent.parent.resolve() / "mss_test_2.0" / "Getswish_Test_Certificates"
 
 
 @dataclass
