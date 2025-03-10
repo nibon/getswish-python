@@ -55,6 +55,9 @@ payment_refund = swish_client.create_refund(
     payment_e.id, callback_url, payment_e.payer_alias, payment_e.amount
 )
 
+# Retrieve info about the refund
+payment_refund_retrieved = swish_client.retrieve_refund(payment_refund.id)
+
 ### Example - Payout API
 
 # Generate a merchant specific reference.
@@ -66,7 +69,6 @@ from getswish.utils import generate_transaction_id
 reference_id = generate_transaction_id()
 
 # Perform a payment request
-
 payout = swish_client.create_payout(
     reference_id, "46701234567", "197001019876", 10.00, callback_url, message="Test payout message."
 )
