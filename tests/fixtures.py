@@ -174,3 +174,70 @@ def t_payout_response():
 @pytest.fixture
 def t_payout_created_headers():
     return {"Location": "https://payout/path/"}
+
+
+@pytest.fixture
+def t_recurring_consent():
+    from getswish import RecurringConsent
+
+    return RecurringConsent(
+        id="consent-id",
+        callback_url="https://example.com/recurring/callback",
+        payee_alias="1234679304",
+        payer_alias="46701234567",
+        payee_payment_reference="order-123",
+        status="CREATED",
+    )
+
+
+@pytest.fixture
+def t_recurring_consent_response():
+    return {
+        "id": "consent-id",
+        "callbackUrl": "https://example.com/recurring/callback",
+        "payeeAlias": "1234679304",
+        "payerAlias": "46701234567",
+        "payeePaymentReference": "order-123",
+        "status": "CREATED",
+        "paymentRequestToken": "recurring-token",
+    }
+
+
+@pytest.fixture
+def t_recurring_payment():
+    from getswish import RecurringPayment
+
+    return RecurringPayment(
+        id="payment-id",
+        consent_id="consent-id",
+        callback_url="https://example.com/recurring/payment-callback",
+        payee_alias="1234679304",
+        amount=20.0,
+        message="Recurring payment",
+        status="CREATED",
+    )
+
+
+@pytest.fixture
+def t_recurring_payment_response():
+    return {
+        "id": "payment-id",
+        "consentId": "consent-id",
+        "callbackUrl": "https://example.com/recurring/payment-callback",
+        "payeeAlias": "1234679304",
+        "amount": 20.0,
+        "currency": "SEK",
+        "message": "Recurring payment",
+        "status": "CREATED",
+        "substatus": "WAITING_FOR_FUNDS",
+    }
+
+
+@pytest.fixture
+def t_recurring_availability_response():
+    return {
+        "tin": "1234679304",
+        "alias": "46701234567",
+        "available": True,
+        "status": "AVAILABLE",
+    }

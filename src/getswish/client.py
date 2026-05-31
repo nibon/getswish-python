@@ -11,7 +11,7 @@ from requests import Response
 
 from .environments import Certificates, Environment, TestEnvironment, TestCertificates
 from .exceptions import SwishError
-from .models import Payment, Payout, Refund
+from .models import Payment, Payout, RecurringAvailability, RecurringConsent, RecurringPayment, Refund
 from .utils import generate_transaction_id
 
 logger = logging.getLogger("getswish")
@@ -47,6 +47,12 @@ class SwishClient:
         except ValueError:
             errors = response.text
         raise SwishError(errors)
+
+    def _partner_headers(self, on_behalf_of: str | None = None, headers: dict | None = None) -> dict | None:
+        request_headers = dict(headers or {})
+        if on_behalf_of is not None:
+            request_headers["onBehalfOf"] = on_behalf_of
+        return request_headers or None
 
     def _requests(self, method: str, url: str, /, **kwargs) -> Response:
         """Requests wrapper that add client certificates and handles api errors and raise http status errors."""
@@ -194,3 +200,155 @@ class SwishClient:
         response = self._requests("get", self._url("v1", f"/payouts/{transaction_id}"))
         logger.debug("getswish.retrieve_payout.response.text: %s", response.text)
         return Payout.from_service(response.json())
+
+    def create_recurring_ecommerce_consent(
+        self,
+        callback_url: str,
+        payer_alias: str | None = None,
+        /,
+        on_behalf_of: str | None = None,
+        **kwargs,
+    ) -> RecurringConsent:
+        consent = RecurringConsent(
+            callback_url=callback_url,
+            payee_alias=kwargs.pop("payee_alias", self.merchant_swish_number),
+            payer_alias=payer_alias,
+            **kwargs,
+        )
+        response = self._requests(
+            "post",
+            self._recurring_url("v1", "/consents"),
+            json=consent.to_service(),
+            headers=self._partner_headers(on_behalf_of),
+        )
+        consent.location = response.headers.get("Location")
+        return consent
+
+    def create_recurring_mcommerce_consent(
+        self,
+        callback_url: str,
+        /,
+        on_behalf_of: str | None = None,
+        **kwargs,
+    ) -> RecurringConsent:
+        consent = RecurringConsent(
+            callback_url=callback_url,
+            payee_alias=kwargs.pop("payee_alias", self.merchant_swish_number),
+            **kwargs,
+        )
+        response = self._requests(
+            "post",
+            self._recurring_url("v1", "/consents/token"),
+            json=consent.to_service(),
+            headers=self._partner_headers(on_behalf_of),
+        )
+        consent.location = response.headers.get("Location")
+        consent.payment_request_token = response.headers.get("PaymentRequestToken")
+        return consent
+
+    def update_recurring_consent_callback_url(
+        self,
+        consent_id: str,
+        callback_url: str,
+        /,
+        on_behalf_of: str | None = None,
+    ) -> RecurringConsent:
+        response = self._requests(
+            "patch",
+            self._recurring_url("v1", f"/consents/{consent_id}"),
+            json=[{"op": "replace", "path": "/callbackUrl", "value": callback_url}],
+            headers=self._partner_headers(on_behalf_of, {"Content-Type": "application/json-patch+json"}),
+        )
+        try:
+            return RecurringConsent.from_service(response.json())
+        except ValueError:
+            return RecurringConsent(id=consent_id, callback_url=callback_url)
+
+    def retrieve_recurring_consent(
+        self,
+        consent_id: str,
+        /,
+        on_behalf_of: str | None = None,
+    ) -> RecurringConsent:
+        response = self._requests(
+            "get",
+            self._recurring_url("v1", f"/consents/{consent_id}"),
+            headers=self._partner_headers(on_behalf_of),
+        )
+        return RecurringConsent.from_service(response.json())
+
+    def delete_recurring_consent(
+        self,
+        consent_id: str,
+        /,
+        on_behalf_of: str | None = None,
+    ) -> Response:
+        return self._requests(
+            "delete",
+            self._recurring_url("v1", f"/consents/{consent_id}"),
+            headers=self._partner_headers(on_behalf_of),
+        )
+
+    def create_recurring_payment(
+        self,
+        consent_id: str,
+        amount: int | float,
+        callback_url: str,
+        /,
+        on_behalf_of: str | None = None,
+        **kwargs,
+    ) -> RecurringPayment:
+        payment = RecurringPayment(
+            consent_id=consent_id,
+            amount=amount,
+            callback_url=callback_url,
+            payee_alias=kwargs.pop("payee_alias", self.merchant_swish_number),
+            **kwargs,
+        )
+        response = self._requests(
+            "post",
+            self._recurring_url("v1", "/payments"),
+            json=payment.to_service(),
+            headers=self._partner_headers(on_behalf_of),
+        )
+        payment.location = response.headers.get("Location")
+        return payment
+
+    def retrieve_recurring_payment(
+        self,
+        payment_id: str,
+        /,
+        on_behalf_of: str | None = None,
+    ) -> RecurringPayment:
+        response = self._requests(
+            "get",
+            self._recurring_url("v1", f"/payments/{payment_id}"),
+            headers=self._partner_headers(on_behalf_of),
+        )
+        return RecurringPayment.from_service(response.json())
+
+    def check_recurring_tin_availability(
+        self,
+        tin: str,
+        /,
+        on_behalf_of: str | None = None,
+    ) -> RecurringAvailability:
+        response = self._requests(
+            "get",
+            self._recurring_url("v1", f"/availability/tin/{tin}"),
+            headers=self._partner_headers(on_behalf_of),
+        )
+        return RecurringAvailability.from_service(response.json())
+
+    def check_recurring_alias_availability(
+        self,
+        alias: str,
+        /,
+        on_behalf_of: str | None = None,
+    ) -> RecurringAvailability:
+        response = self._requests(
+            "get",
+            self._recurring_url("v1", f"/availability/alias/{alias}"),
+            headers=self._partner_headers(on_behalf_of),
+        )
+        return RecurringAvailability.from_service(response.json())

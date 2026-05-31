@@ -1,4 +1,4 @@
-from getswish import Payment, Payout, Refund
+from getswish import Payment, Payout, RecurringAvailability, RecurringConsent, RecurringPayment, Refund
 from getswish.utils import camel2snake, f_name_conv
 
 from .fixtures import *  # noqa: F403
@@ -38,3 +38,35 @@ def test_payout_to_service(t_payout):
     service_json_data = t_payout.to_service()
     for k, v in service_json_data.items():
         assert getattr(t_payout, f_name_conv(k, camel2snake, True)) == v
+
+
+def test_recurring_consent_from_service(t_recurring_consent_response):
+    consent = RecurringConsent.from_service(t_recurring_consent_response)
+    for k, v in t_recurring_consent_response.items():
+        assert getattr(consent, f_name_conv(k, camel2snake, True)) == v
+
+
+def test_recurring_consent_to_service(t_recurring_consent):
+    service_json_data = t_recurring_consent.to_service()
+    assert "id" not in service_json_data
+    for k, v in service_json_data.items():
+        assert getattr(t_recurring_consent, f_name_conv(k, camel2snake, True)) == v
+
+
+def test_recurring_payment_from_service(t_recurring_payment_response):
+    payment = RecurringPayment.from_service(t_recurring_payment_response)
+    for k, v in t_recurring_payment_response.items():
+        assert getattr(payment, f_name_conv(k, camel2snake, True)) == v
+
+
+def test_recurring_payment_to_service(t_recurring_payment):
+    service_json_data = t_recurring_payment.to_service()
+    assert "id" not in service_json_data
+    for k, v in service_json_data.items():
+        assert getattr(t_recurring_payment, f_name_conv(k, camel2snake, True)) == v
+
+
+def test_recurring_availability_from_service(t_recurring_availability_response):
+    availability = RecurringAvailability.from_service(t_recurring_availability_response)
+    for k, v in t_recurring_availability_response.items():
+        assert getattr(availability, f_name_conv(k, camel2snake, True)) == v

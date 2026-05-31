@@ -141,3 +141,105 @@ def test_requests_retrieve_payout(client, callback_url, t_payout_response, mocke
     mocker.patch.object(requests, "get", return_value=RequestsMockResponse(200, t_payout_response))
     response = client.retrieve_payout(t_payout_response["payoutInstructionUUID"])
     assert response.payout_instruction_uuid == t_payout_response["payoutInstructionUUID"]
+
+
+def test_requests_create_recurring_ecommerce_consent(
+    client, callback_url, t_recurring_consent_response, mocker
+):
+    patched_post = mocker.patch.object(
+        requests,
+        "post",
+        return_value=RequestsMockResponse(201, t_recurring_consent_response, {"Location": "https://consent/path/"}),
+    )
+    response = client.create_recurring_ecommerce_consent(
+        callback_url,
+        "46701234567",
+        on_behalf_of="partner",
+        payee_payment_reference="order-123",
+    )
+    assert response.location == "https://consent/path/"
+    assert patched_post.call_args.kwargs["url"] == client._recurring_url("v1", "/consents")
+    assert patched_post.call_args.kwargs["json"]["payerAlias"] == "46701234567"
+    assert patched_post.call_args.kwargs["headers"] == {"onBehalfOf": "partner"}
+
+
+def test_requests_create_recurring_mcommerce_consent(client, callback_url, t_recurring_consent_response, mocker):
+    patched_post = mocker.patch.object(
+        requests,
+        "post",
+        return_value=RequestsMockResponse(
+            201,
+            t_recurring_consent_response,
+            {"Location": "https://consent/path/", "PaymentRequestToken": "recurring-token"},
+        ),
+    )
+    response = client.create_recurring_mcommerce_consent(callback_url)
+    assert response.location == "https://consent/path/"
+    assert response.payment_request_token == "recurring-token"
+    assert patched_post.call_args.kwargs["url"] == client._recurring_url("v1", "/consents/token")
+
+
+def test_requests_update_recurring_consent_callback(client, callback_url, t_recurring_consent_response, mocker):
+    patched_patch = mocker.patch.object(requests, "patch", return_value=RequestsMockResponse(200, t_recurring_consent_response))
+    response = client.update_recurring_consent_callback_url("consent-id", callback_url, on_behalf_of="partner")
+    assert response.id == "consent-id"
+    assert patched_patch.call_args.kwargs["url"] == client._recurring_url("v1", "/consents/consent-id")
+    assert patched_patch.call_args.kwargs["json"] == [
+        {"op": "replace", "path": "/callbackUrl", "value": callback_url}
+    ]
+    assert patched_patch.call_args.kwargs["headers"] == {
+        "Content-Type": "application/json-patch+json",
+        "onBehalfOf": "partner",
+    }
+
+
+def test_requests_retrieve_recurring_consent(client, t_recurring_consent_response, mocker):
+    patched_get = mocker.patch.object(requests, "get", return_value=RequestsMockResponse(200, t_recurring_consent_response))
+    response = client.retrieve_recurring_consent("consent-id")
+    assert response.id == "consent-id"
+    assert patched_get.call_args.kwargs["url"] == client._recurring_url("v1", "/consents/consent-id")
+
+
+def test_requests_delete_recurring_consent(client, mocker):
+    patched_delete = mocker.patch.object(requests, "delete", return_value=RequestsMockResponse(204))
+    response = client.delete_recurring_consent("consent-id", on_behalf_of="partner")
+    assert response.status_code == 204
+    assert patched_delete.call_args.kwargs["url"] == client._recurring_url("v1", "/consents/consent-id")
+    assert patched_delete.call_args.kwargs["headers"] == {"onBehalfOf": "partner"}
+
+
+def test_requests_create_recurring_payment(client, callback_url, t_recurring_payment_response, mocker):
+    patched_post = mocker.patch.object(
+        requests,
+        "post",
+        return_value=RequestsMockResponse(201, t_recurring_payment_response, {"Location": "https://payment/path/"}),
+    )
+    response = client.create_recurring_payment("consent-id", 20.0, callback_url, message="Recurring payment")
+    assert response.location == "https://payment/path/"
+    assert patched_post.call_args.kwargs["url"] == client._recurring_url("v1", "/payments")
+    assert patched_post.call_args.kwargs["json"]["consentId"] == "consent-id"
+
+
+def test_requests_retrieve_recurring_payment(client, t_recurring_payment_response, mocker):
+    patched_get = mocker.patch.object(requests, "get", return_value=RequestsMockResponse(200, t_recurring_payment_response))
+    response = client.retrieve_recurring_payment("payment-id")
+    assert response.id == "payment-id"
+    assert patched_get.call_args.kwargs["url"] == client._recurring_url("v1", "/payments/payment-id")
+
+
+def test_requests_check_recurring_tin_availability(client, t_recurring_availability_response, mocker):
+    patched_get = mocker.patch.object(
+        requests, "get", return_value=RequestsMockResponse(200, t_recurring_availability_response)
+    )
+    response = client.check_recurring_tin_availability("1234679304")
+    assert response.available is True
+    assert patched_get.call_args.kwargs["url"] == client._recurring_url("v1", "/availability/tin/1234679304")
+
+
+def test_requests_check_recurring_alias_availability(client, t_recurring_availability_response, mocker):
+    patched_get = mocker.patch.object(
+        requests, "get", return_value=RequestsMockResponse(200, t_recurring_availability_response)
+    )
+    response = client.check_recurring_alias_availability("46701234567")
+    assert response.available is True
+    assert patched_get.call_args.kwargs["url"] == client._recurring_url("v1", "/availability/alias/46701234567")
