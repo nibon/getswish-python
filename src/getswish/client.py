@@ -352,3 +352,20 @@ class SwishClient:
             headers=self._partner_headers(on_behalf_of),
         )
         return RecurringAvailability.from_service(response.json())
+
+    def create_prefilled_qr_code(
+        self,
+        qr_format: str,
+        /,
+        **kwargs,
+    ) -> bytes | str:
+        payload = {"format": qr_format, **{k: v for k, v in kwargs.items() if v is not None}}
+        response = self._requests(
+            "post",
+            self._qr_url("v1", "/prefilled"),
+            json=payload,
+            headers={"Accept": "image/svg+xml" if qr_format == "svg" else f"image/{qr_format}"},
+        )
+        if qr_format == "svg":
+            return response.content.decode("utf-8")
+        return response.content

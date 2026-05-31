@@ -15,6 +15,7 @@ class RequestsMockResponse:
     json_data: list[dict] | dict = ""
     headers: dict = dict
     text: str = ""
+    content: bytes = b""
 
     def json(self):
         return self.json_data
@@ -243,3 +244,51 @@ def test_requests_check_recurring_alias_availability(client, t_recurring_availab
     response = client.check_recurring_alias_availability("46701234567")
     assert response.available is True
     assert patched_get.call_args.kwargs["url"] == client._recurring_url("v1", "/availability/alias/46701234567")
+
+
+def test_requests_create_prefilled_qr_code(client, mocker):
+    patched_post = mocker.patch.object(
+        requests,
+        "post",
+        return_value=RequestsMockResponse(200, headers={"Content-Type": "image/png"}, content=b"png-content"),
+    )
+    response = client.create_prefilled_qr_code(
+        "png",
+        payee="1234679304",
+        amount=20.0,
+        message="QR payment",
+        size=300,
+        border=1,
+        transparent=True,
+    )
+    assert response == b"png-content"
+    assert patched_post.call_args.kwargs["url"] == client._qr_url("v1", "/prefilled")
+    assert patched_post.call_args.kwargs["json"] == {
+        "format": "png",
+        "payee": "1234679304",
+        "amount": 20.0,
+        "message": "QR payment",
+        "size": 300,
+        "border": 1,
+        "transparent": True,
+    }
+    assert patched_post.call_args.kwargs["headers"] == {"Accept": "image/png"}
+
+
+def test_requests_create_prefilled_svg_qr_code(client, mocker):
+    mocker.patch.object(
+        requests,
+        "post",
+        return_value=RequestsMockResponse(200, headers={"Content-Type": "image/svg+xml"}, content=b"<svg />"),
+    )
+    response = client.create_prefilled_qr_code("svg")
+    assert response == "<svg />"
+
+
+def test_requests_create_prefilled_qr_code_swish_error(client, mocker):
+    response = RequestsMockResponse(422, text="qr error")
+    response.json = lambda: (_ for _ in ()).throw(ValueError())
+    mocker.patch.object(requests, "post", return_value=response)
+    with pytest.raises(getswish.SwishError) as e_info:
+        client.create_prefilled_qr_code("png")
+    assert e_info.value.errors == {"error": "qr error"}
