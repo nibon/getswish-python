@@ -33,20 +33,13 @@ class SwishClient:
     def _url(self, version: str, path: str) -> str:
         return f"{self.environment.base}{version}{path}"
 
-    def _recurring_url(self, version: str, path: str) -> str:
+    def _recurring_url(self, path: str) -> str:
         base = self.environment.recurring_base or self.environment.base
-        return f"{base}{version}{path}"
+        return f"{base}{path}"
 
-    def _qr_url(self, version: str, path: str) -> str:
+    def _qr_url(self, path: str) -> str:
         base = self.environment.qr_base or self.environment.base
-        return f"{base}{version}{path}"
-
-    def _raise_swish_error(self, response: Response) -> None:
-        try:
-            errors = response.json()
-        except ValueError:
-            errors = response.text
-        raise SwishError(errors)
+        return f"{base}{path}"
 
     def _partner_headers(self, on_behalf_of: str | None = None, headers: dict | None = None) -> dict | None:
         request_headers = dict(headers or {})
@@ -65,8 +58,14 @@ class SwishClient:
             verify=self.certificates.verify.public,
         )
         response = getattr(requests, method)(url=url, **kwargs)
-        if response.status_code == 422:
-            self._raise_swish_error(response)
+        if response.status_code in {400, 415, 422}:
+            try:
+                errors = response.json()
+                if errors:
+                    raise SwishError(errors)
+            except ValueError:
+                if response.text:
+                    raise SwishError(response.text)
         response.raise_for_status()
         return response
 
@@ -215,9 +214,10 @@ class SwishClient:
             payer_alias=payer_alias,
             **kwargs,
         )
+        consent.consent_id = consent.consent_id or generate_transaction_id()
         response = self._requests(
             "post",
-            self._recurring_url("v1", "/consents"),
+            self._recurring_url(f"/recurring/merchant/v1/consents/{consent.consent_id}"),
             json=consent.to_service(),
             headers=self._partner_headers(on_behalf_of),
         )
@@ -236,9 +236,10 @@ class SwishClient:
             payee_alias=kwargs.pop("payee_alias", self.merchant_swish_number),
             **kwargs,
         )
+        consent.consent_id = consent.consent_id or generate_transaction_id()
         response = self._requests(
             "post",
-            self._recurring_url("v1", "/consents/token"),
+            self._recurring_url(f"/recurring/merchant/v1/consents/{consent.consent_id}/token"),
             json=consent.to_service(),
             headers=self._partner_headers(on_behalf_of),
         )
@@ -254,15 +255,15 @@ class SwishClient:
         on_behalf_of: str | None = None,
     ) -> RecurringConsent:
         response = self._requests(
-            "patch",
-            self._recurring_url("v1", f"/consents/{consent_id}"),
-            json=[{"op": "replace", "path": "/callbackUrl", "value": callback_url}],
-            headers=self._partner_headers(on_behalf_of, {"Content-Type": "application/json-patch+json"}),
+            "put",
+            self._recurring_url(f"/recurring/merchant/v1/consent/{consent_id}/callback"),
+            json={"callbackUrl": callback_url},
+            headers=self._partner_headers(on_behalf_of),
         )
         try:
             return RecurringConsent.from_service(response.json())
         except ValueError:
-            return RecurringConsent(id=consent_id, callback_url=callback_url)
+            return RecurringConsent(consent_id=consent_id, callback_url=callback_url)
 
     def retrieve_recurring_consent(
         self,
@@ -272,7 +273,7 @@ class SwishClient:
     ) -> RecurringConsent:
         response = self._requests(
             "get",
-            self._recurring_url("v1", f"/consents/{consent_id}"),
+            self._recurring_url(f"/recurring/merchant/v1/consents/{consent_id}"),
             headers=self._partner_headers(on_behalf_of),
         )
         return RecurringConsent.from_service(response.json())
@@ -285,7 +286,7 @@ class SwishClient:
     ) -> Response:
         return self._requests(
             "delete",
-            self._recurring_url("v1", f"/consents/{consent_id}"),
+            self._recurring_url(f"/recurring/merchant/v1/consents/{consent_id}"),
             headers=self._partner_headers(on_behalf_of),
         )
 
@@ -305,9 +306,10 @@ class SwishClient:
             payee_alias=kwargs.pop("payee_alias", self.merchant_swish_number),
             **kwargs,
         )
+        payment.payment_id = payment.payment_id or generate_transaction_id()
         response = self._requests(
             "post",
-            self._recurring_url("v1", "/payments"),
+            self._recurring_url(f"/recurring/merchant/v1/payments/single/{payment.payment_id}"),
             json=payment.to_service(),
             headers=self._partner_headers(on_behalf_of),
         )
@@ -322,7 +324,7 @@ class SwishClient:
     ) -> RecurringPayment:
         response = self._requests(
             "get",
-            self._recurring_url("v1", f"/payments/{payment_id}"),
+            self._recurring_url(f"/recurring/merchant/v1/payments/single/{payment_id}/status"),
             headers=self._partner_headers(on_behalf_of),
         )
         return RecurringPayment.from_service(response.json())
@@ -334,8 +336,9 @@ class SwishClient:
         on_behalf_of: str | None = None,
     ) -> RecurringAvailability:
         response = self._requests(
-            "get",
-            self._recurring_url("v1", f"/availability/tin/{tin}"),
+            "post",
+            self._recurring_url("/recurring/merchant/v1/recurring/tin"),
+            json={"tin": tin},
             headers=self._partner_headers(on_behalf_of),
         )
         return RecurringAvailability.from_service(response.json())
@@ -347,8 +350,9 @@ class SwishClient:
         on_behalf_of: str | None = None,
     ) -> RecurringAvailability:
         response = self._requests(
-            "get",
-            self._recurring_url("v1", f"/availability/alias/{alias}"),
+            "post",
+            self._recurring_url("/recurring/merchant/v1/recurring/alias"),
+            json={"alias": alias},
             headers=self._partner_headers(on_behalf_of),
         )
         return RecurringAvailability.from_service(response.json())
@@ -359,10 +363,42 @@ class SwishClient:
         /,
         **kwargs,
     ) -> bytes | str:
-        payload = {"format": qr_format, **{k: v for k, v in kwargs.items() if v is not None}}
+        if qr_format not in {"jpg", "png", "svg"}:
+            raise ValueError(f"qr_format must be one of 'jpg', 'png', 'svg'; got {qr_format!r}")
+
+        def _qr_field(key: str) -> dict:
+            value = kwargs.pop(key, None)
+            editable = kwargs.pop(f"{key}_editable", False)
+            return {key: {"value": value, "editable": editable}} if value is not None else {}
+
+        payload: dict = {"format": qr_format}
+        payload.update(_qr_field("payee"))
+        payload.update(_qr_field("amount"))
+        payload.update(_qr_field("message"))
+        payload.update({k: v for k, v in kwargs.items() if v is not None})
         response = self._requests(
             "post",
-            self._qr_url("v1", "/prefilled"),
+            self._qr_url("v1/prefilled"),
+            json=payload,
+            headers={"Accept": "image/svg+xml" if qr_format == "svg" else f"image/{qr_format}"},
+        )
+        if qr_format == "svg":
+            return response.content.decode("utf-8")
+        return response.content
+
+    def create_commerce_qr_code(
+        self,
+        token: str,
+        qr_format: str,
+        /,
+        **kwargs,
+    ) -> bytes | str:
+        if qr_format not in {"jpg", "png", "svg"}:
+            raise ValueError(f"qr_format must be one of 'jpg', 'png', 'svg'; got {qr_format!r}")
+        payload = {"token": token, "format": qr_format, **{k: v for k, v in kwargs.items() if v is not None}}
+        response = self._requests(
+            "post",
+            self._qr_url("v1/commerce"),
             json=payload,
             headers={"Accept": "image/svg+xml" if qr_format == "svg" else f"image/{qr_format}"},
         )

@@ -29,13 +29,13 @@ class Environment:
 TestEnvironment = Environment(
     name="test",
     base="https://mss.cpc.getswish.net/swish-cpcapi/api/",
-    recurring_base="https://mss.cpc.getswish.net/recurring/merchant/",
+    recurring_base="https://mss.cpc.getswish.net",
     qr_base="https://mpc.getswish.net/qrg-swish/api/",
 )
 ProductionEnvironment = Environment(
     name="production",
     base="https://cpc.getswish.net/swish-cpcapi/api/",
-    recurring_base="https://cpc.getswish.net/recurring/merchant/",
+    recurring_base="https://cpc.getswish.net",
     qr_base="https://mpc.getswish.net/qrg-swish/api/",
 )
 

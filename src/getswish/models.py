@@ -128,17 +128,18 @@ class Payout:
 class RecurringConsent:
     """Recurring payment consent object."""
 
-    id: str | None = None
+    consent_id: str | None = None
     callback_url: str | None = None
     payee_alias: str | None = None
     payer_alias: str | None = None
-    payer_ssn: str | None = None
+    payer_tin: str | None = None
     payee_payment_reference: str | None = None
     status: str | None = None
+    sub_status: str | None = None
     payment_request_token: str | None = None
     location: str | None = None
+    activated_at: str | None = None
     date_created: str | None = None
-    date_signed: str | None = None
     date_cancelled: str | None = None
     error_code: str | None = None
     error_message: str | None = None
@@ -149,22 +150,41 @@ class RecurringConsent:
     def from_service(consent_object: dict) -> RecurringConsent:
         """Map service response format to local RecurringConsent class."""
 
-        return RecurringConsent(**{f_name_conv(k, camel2snake, True): v for k, v in consent_object.items()})
+        flat: dict = {}
+        for k, v in consent_object.items():
+            if k == "payer" and isinstance(v, dict):
+                flat["payer_alias"] = v.get("alias")
+            elif k == "payee" and isinstance(v, dict):
+                flat["payee_alias"] = v.get("alias")
+            else:
+                flat[f_name_conv(k, camel2snake, True)] = v
+        fields = {f.name for f in dataclasses.fields(RecurringConsent)}
+        return RecurringConsent(**{k: v for k, v in flat.items() if k in fields})
 
     def to_service(self) -> dict:
-        """Remove empty fields and id before sending instance to swish service."""
+        """Remove empty fields and consent_id before sending instance to swish service."""
 
-        def _exclude(k, v):
-            return v is None or k == "id"
-
-        return {f_name_conv(k, snake2camel): v for k, v in dataclasses.asdict(self).items() if not _exclude(k, v)}
+        skip = {"consent_id", "payment_request_token", "location"}
+        result: dict = {}
+        for k, v in dataclasses.asdict(self).items():
+            if v is None or k in skip:
+                continue
+            if k == "payer_alias":
+                result["payer"] = {"alias": v}
+            elif k == "payee_alias":
+                result["payee"] = {"alias": v}
+            elif k == "payer_tin":
+                result["tin"] = v
+            else:
+                result[f_name_conv(k, snake2camel)] = v
+        return result
 
 
 @dataclass
 class RecurringPayment:
     """Recurring payment object."""
 
-    id: str | None = None
+    payment_id: str | None = None
     consent_id: str | None = None
     callback_url: str | None = None
     payee_alias: str | None = None
@@ -176,7 +196,8 @@ class RecurringPayment:
     payer_payment_reference: str | None = None
     payment_reference: str | None = None
     status: str | None = None
-    substatus: str | None = None
+    sub_status: str | None = None
+    status_at: str | None = None
     location: str | None = None
     date_created: str | None = None
     date_paid: str | None = None
@@ -189,30 +210,52 @@ class RecurringPayment:
     def from_service(payment_object: dict) -> RecurringPayment:
         """Map service response format to local RecurringPayment class."""
 
-        return RecurringPayment(**{f_name_conv(k, camel2snake, True): v for k, v in payment_object.items()})
+        flat: dict = {}
+        for k, v in payment_object.items():
+            if k == "payer" and isinstance(v, dict):
+                flat["payer_alias"] = v.get("alias")
+            elif k == "payee" and isinstance(v, dict):
+                flat["payee_alias"] = v.get("alias")
+            elif k == "amount" and isinstance(v, dict):
+                flat["amount"] = v.get("value")
+                flat["currency"] = v.get("currency", "SEK")
+            else:
+                flat[f_name_conv(k, camel2snake, True)] = v
+        fields = {f.name for f in dataclasses.fields(RecurringPayment)}
+        return RecurringPayment(**{k: v for k, v in flat.items() if k in fields})
 
     def to_service(self) -> dict:
-        """Remove empty fields and id before sending instance to swish service."""
+        """Remove empty fields and payment_id before sending instance to swish service."""
 
-        def _exclude(k, v):
-            return v is None or k == "id"
-
-        return {f_name_conv(k, snake2camel): v for k, v in dataclasses.asdict(self).items() if not _exclude(k, v)}
+        skip = {"payment_id", "location"}
+        result: dict = {}
+        for k, v in dataclasses.asdict(self).items():
+            if v is None or k in skip:
+                continue
+            if k == "payer_alias":
+                result["payer"] = {"alias": v}
+            elif k == "payee_alias":
+                result["payee"] = {"alias": v}
+            elif k == "amount":
+                result["amount"] = {"value": v, "currency": result.pop("currency", self.currency)}
+            elif k == "currency":
+                # handled inside amount block above; skip standalone
+                pass
+            else:
+                result[f_name_conv(k, snake2camel)] = v
+        return result
 
 
 @dataclass
 class RecurringAvailability:
     """Recurring payment availability response."""
 
-    tin: str | None = None
-    alias: str | None = None
-    available: bool | None = None
-    status: str | None = None
-    reason: str | None = None
-    message: str | None = None
+    recurring_is_offered: bool | None = None
 
     @staticmethod
     def from_service(availability_object: dict) -> RecurringAvailability:
         """Map service response format to local RecurringAvailability class."""
 
-        return RecurringAvailability(**{f_name_conv(k, camel2snake, True): v for k, v in availability_object.items()})
+        fields = {f.name for f in dataclasses.fields(RecurringAvailability)}
+        flat = {f_name_conv(k, camel2snake, True): v for k, v in availability_object.items()}
+        return RecurringAvailability(**{k: v for k, v in flat.items() if k in fields})

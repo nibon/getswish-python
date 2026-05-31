@@ -42,31 +42,40 @@ def test_payout_to_service(t_payout):
 
 def test_recurring_consent_from_service(t_recurring_consent_response):
     consent = RecurringConsent.from_service(t_recurring_consent_response)
-    for k, v in t_recurring_consent_response.items():
-        assert getattr(consent, f_name_conv(k, camel2snake, True)) == v
+    assert consent.consent_id == "consent-id"
+    assert consent.payer_alias == "46701234567"
+    assert consent.payee_alias == "1234679304"
+    assert consent.status == "ACTIVE"
+    assert consent.sub_status is None
+    assert consent.activated_at == "2024-10-28T11:52:08.903863Z"
 
 
 def test_recurring_consent_to_service(t_recurring_consent):
     service_json_data = t_recurring_consent.to_service()
-    assert "id" not in service_json_data
-    for k, v in service_json_data.items():
-        assert getattr(t_recurring_consent, f_name_conv(k, camel2snake, True)) == v
+    assert "consent_id" not in service_json_data
+    assert "consentId" not in service_json_data
+    assert service_json_data["payer"] == {"alias": "46701234567"}
+    assert service_json_data["payee"] == {"alias": "1234679304"}
+    assert service_json_data["callbackUrl"] == "https://example.com/recurring/callback"
+    assert service_json_data["payeePaymentReference"] == "order-123"
 
 
 def test_recurring_payment_from_service(t_recurring_payment_response):
     payment = RecurringPayment.from_service(t_recurring_payment_response)
-    for k, v in t_recurring_payment_response.items():
-        assert getattr(payment, f_name_conv(k, camel2snake, True)) == v
+    assert payment.payment_id == "payment-id"
+    assert payment.status == "PAID"
+    assert payment.status_at == "2024-10-28T11:52:08.903863Z"
 
 
 def test_recurring_payment_to_service(t_recurring_payment):
     service_json_data = t_recurring_payment.to_service()
-    assert "id" not in service_json_data
-    for k, v in service_json_data.items():
-        assert getattr(t_recurring_payment, f_name_conv(k, camel2snake, True)) == v
+    assert "payment_id" not in service_json_data
+    assert "paymentId" not in service_json_data
+    assert service_json_data["payee"] == {"alias": "1234679304"}
+    assert service_json_data["amount"] == {"value": 20.0, "currency": "SEK"}
+    assert service_json_data["consentId"] == "consent-id"
 
 
 def test_recurring_availability_from_service(t_recurring_availability_response):
     availability = RecurringAvailability.from_service(t_recurring_availability_response)
-    for k, v in t_recurring_availability_response.items():
-        assert getattr(availability, f_name_conv(k, camel2snake, True)) == v
+    assert availability.recurring_is_offered is True
