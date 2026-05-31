@@ -10,26 +10,26 @@ from .utils import camel2snake, f_name_conv, snake2camel
 class Payment:
     """https://developer.swish.nu/api/payment-request/v2#payment-request-object"""
 
-    id: str = None
-    callback_url: str = None
-    payee_alias: str = None
-    amount: int | float = None
+    id: str | None = None
+    callback_url: str | None = None
+    payee_alias: str | None = None
+    amount: int | float | None = None
     currency: str = "SEK"
-    message: str = None
-    payer_alias: str = None
-    payer_ssn: str = None
-    payment_reference: str = None
-    age_limit: str = None
-    payee_payment_reference: str = None
-    status: str = None
-    location: str = None
-    payment_request_token: str = None
-    date_created: str = None
-    date_paid: str = None
-    error_code: str = None
-    error_message: str = None
-    additional_information: str = None
-    callback_identifier: str = None
+    message: str | None = None
+    payer_alias: str | None = None
+    payer_ssn: str | None = None
+    payment_reference: str | None = None
+    age_limit: str | None = None
+    payee_payment_reference: str | None = None
+    status: str | None = None
+    location: str | None = None
+    payment_request_token: str | None = None
+    date_created: str | None = None
+    date_paid: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+    additional_information: str | None = None
+    callback_identifier: str | None = None
 
     @staticmethod
     def from_service(payment_request_object: dict) -> Payment:
@@ -50,28 +50,28 @@ class Payment:
 class Refund:
     """https://developer.swish.nu/api/refunds/v2#refund-request-object"""
 
-    id: str = None
-    callback_url: str = None
-    payee_alias: str = None
-    amount: int | float = None
+    id: str | None = None
+    callback_url: str | None = None
+    payee_alias: str | None = None
+    amount: int | float | None = None
     currency: str = "SEK"
-    message: str = None
-    payer_alias: str = None
-    payer_ssn: str = None
-    payment_reference: str = None
-    age_limit: str = None
-    payee_payment_reference: str = None
-    status: str = None
-    location: str = None
-    payment_request_token: str = None
-    date_created: str = None
-    date_paid: str = None
-    error_code: str = None
-    error_message: str = None
-    additional_information: str = None
-    callback_identifier: str = None
-    original_payment_reference: str = None
-    payer_payment_reference: str = None
+    message: str | None = None
+    payer_alias: str | None = None
+    payer_ssn: str | None = None
+    payment_reference: str | None = None
+    age_limit: str | None = None
+    payee_payment_reference: str | None = None
+    status: str | None = None
+    location: str | None = None
+    payment_request_token: str | None = None
+    date_created: str | None = None
+    date_paid: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+    additional_information: str | None = None
+    callback_identifier: str | None = None
+    original_payment_reference: str | None = None
+    payer_payment_reference: str | None = None
 
     @staticmethod
     def from_service(refund_create_object: dict) -> Refund:
@@ -92,27 +92,27 @@ class Refund:
 class Payout:
     """https://developer.swish.nu/api/payouts/v1#payout-object"""
 
-    payout_instruction_uuid: str = None
-    payer_payment_reference: str = None
-    payment_reference: str = None
-    signing_certificate_serial_number: str = None
-    payer_alias: str = None
-    payee_alias: str = None
-    payee_ssn: str = None
-    amount: int | float = None
+    payout_instruction_uuid: str | None = None
+    payer_payment_reference: str | None = None
+    payment_reference: str | None = None
+    signing_certificate_serial_number: str | None = None
+    payer_alias: str | None = None
+    payee_alias: str | None = None
+    payee_ssn: str | None = None
+    amount: int | float | None = None
     currency: str = "SEK"
     payout_type: str = "PAYOUT"
-    instruction_date: str = None
-    message: str = None
-    location: str = None
-    callback_url: str = None
-    status: str = None
-    date_created: str = None
-    date_paid: str = None
-    error_code: str = None
-    error_message: str = None
-    additional_information: str = None
-    callback_identifier: str = None
+    instruction_date: str | None = None
+    message: str | None = None
+    location: str | None = None
+    callback_url: str | None = None
+    status: str | None = None
+    date_created: str | None = None
+    date_paid: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+    additional_information: str | None = None
+    callback_identifier: str | None = None
 
     @staticmethod
     def from_service(payout_create_object: dict) -> Payout:

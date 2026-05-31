@@ -6,9 +6,9 @@ cert_base = Path(__file__).parent.parent.parent.resolve() / "mss_test_2.0" / "Ge
 
 @dataclass
 class Certificate:
-    public: str = None
-    private_key: str = None
-    public_serial: str = None
+    public: str | None = None
+    private_key: str | None = None
+    public_serial: str | None = None
 
 
 @dataclass

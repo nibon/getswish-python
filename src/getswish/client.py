@@ -20,8 +20,8 @@ logger.addHandler(logging.NullHandler())
 
 @dataclass
 class SwishClient:
-    environment: Environment = None
-    certificates: Certificates = None
+    environment: Environment | None = None
+    certificates: Certificates | None = None
     merchant_swish_number: str = "1234679304"
 
     def __post_init__(self):
@@ -69,7 +69,7 @@ class SwishClient:
         self,
         amount: int | float,
         callback_url: str,
-        payer_alias: str = None,
+        payer_alias: str | None = None,
         /,
         **kwargs,
     ) -> Payment:
