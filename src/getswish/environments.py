@@ -22,10 +22,22 @@ class Certificates:
 class Environment:
     name: str
     base: str
+    recurring_base: str | None = None
+    qr_base: str | None = None
 
 
-TestEnvironment = Environment(name="test", base="https://mss.cpc.getswish.net/swish-cpcapi/api/")
-ProductionEnvironment = Environment(name="production", base="https://cpc.getswish.net/swish-cpcapi/api/")
+TestEnvironment = Environment(
+    name="test",
+    base="https://mss.cpc.getswish.net/swish-cpcapi/api/",
+    recurring_base="https://mss.cpc.getswish.net/recurring/merchant/",
+    qr_base="https://mpc.getswish.net/qrg-swish/api/",
+)
+ProductionEnvironment = Environment(
+    name="production",
+    base="https://cpc.getswish.net/swish-cpcapi/api/",
+    recurring_base="https://cpc.getswish.net/recurring/merchant/",
+    qr_base="https://mpc.getswish.net/qrg-swish/api/",
+)
 
 TestCertificates = Certificates(
     Certificate(

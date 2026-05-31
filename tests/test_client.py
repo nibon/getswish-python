@@ -37,6 +37,16 @@ def test_url(client):
     assert client._url(version, path) == f"{client.environment.base}{version}{path}"
 
 
+def test_recurring_url(client):
+    version, path = "v1", "/consents"
+    assert client._recurring_url(version, path) == f"{client.environment.recurring_base}{version}{path}"
+
+
+def test_qr_url(client):
+    version, path = "v1", "/prefilled"
+    assert client._qr_url(version, path) == f"{client.environment.qr_base}{version}{path}"
+
+
 def test_sign_payload(client):
     a = client._sign_payload({"foo": "bar"})
     assert isinstance(a, str)
@@ -59,6 +69,24 @@ def test_requests_swish_error(client, callback_url, t_service_error, mocker):
     mocker.patch.object(requests, "put", return_value=RequestsMockResponse(422, t_service_error))
     with pytest.raises(getswish.SwishError):
         client.create_payment(20.0, callback_url)
+
+
+def test_requests_swish_error_object(client, callback_url, mocker):
+    error = {"errorCode": "foo", "errorMessage": "bar", "traceId": "trace-id"}
+    mocker.patch.object(requests, "put", return_value=RequestsMockResponse(422, error))
+    with pytest.raises(getswish.SwishError) as e_info:
+        client.create_payment(20.0, callback_url)
+    assert e_info.value.errors == {"foo": "bar"}
+    assert e_info.value.trace_id == "trace-id"
+
+
+def test_requests_swish_error_text(client, callback_url, mocker):
+    response = RequestsMockResponse(422, text="bad gateway")
+    response.json = lambda: (_ for _ in ()).throw(ValueError())
+    mocker.patch.object(requests, "put", return_value=response)
+    with pytest.raises(getswish.SwishError) as e_info:
+        client.create_payment(20.0, callback_url)
+    assert e_info.value.errors == {"error": "bad gateway"}
 
 
 def test_requests_create_payment(client, callback_url, t_payment_response, t_payment_created_headers, mocker):

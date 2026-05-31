@@ -33,6 +33,21 @@ class SwishClient:
     def _url(self, version: str, path: str) -> str:
         return f"{self.environment.base}{version}{path}"
 
+    def _recurring_url(self, version: str, path: str) -> str:
+        base = self.environment.recurring_base or self.environment.base
+        return f"{base}{version}{path}"
+
+    def _qr_url(self, version: str, path: str) -> str:
+        base = self.environment.qr_base or self.environment.base
+        return f"{base}{version}{path}"
+
+    def _raise_swish_error(self, response: Response) -> None:
+        try:
+            errors = response.json()
+        except ValueError:
+            errors = response.text
+        raise SwishError(errors)
+
     def _requests(self, method: str, url: str, /, **kwargs) -> Response:
         """Requests wrapper that add client certificates and handles api errors and raise http status errors."""
 
@@ -45,7 +60,7 @@ class SwishClient:
         )
         response = getattr(requests, method)(url=url, **kwargs)
         if response.status_code == 422:
-            raise SwishError(response.json())
+            self._raise_swish_error(response)
         response.raise_for_status()
         return response
 
