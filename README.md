@@ -6,6 +6,8 @@ Client library to integrate with the swish commerce and payout api.
 
 * https://developer.swish.nu/documentation/getting-started/swish-commerce-api
 * https://developer.swish.nu/documentation/getting-started/swish-payout-api
+* https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api
+* https://developer.swish.nu/documentation/getting-started/swish-qr-code
 
 ## Installation
 
@@ -57,6 +59,71 @@ payment_refund = swish_client.create_refund(
 
 # Retrieve info about the refund
 payment_refund_retrieved = swish_client.retrieve_refund(payment_refund.id)
+
+### Example - Recurring Payments API
+
+Recurring payments allow a merchant to charge a customer on a consent basis. The customer signs
+a consent once (via e-commerce or m-commerce flow), and the merchant can then initiate payments
+against that consent without further customer interaction.
+
+```python
+# Check if the payer's bank supports recurring payments for their alias.
+availability = swish_client.check_recurring_alias_availability("46701234567")
+if not availability.recurring_is_offered:
+    raise Exception("Recurring payments not available for this payer.")
+
+# Create a recurring consent - E-commerce flow (payer alias known).
+consent = swish_client.create_recurring_ecommerce_consent(
+    callback_url, "46701234567", payee_payment_reference="subscription-001"
+)
+
+# Create a recurring consent - M-commerce flow (payer alias unknown; token shown to user).
+consent_m = swish_client.create_recurring_mcommerce_consent(
+    callback_url, payee_payment_reference="subscription-001"
+)
+# consent_m.payment_request_token -- show this to the payer in the Swish app.
+
+# Retrieve consent info (e.g. after callback confirms ACTIVE status).
+consent_active = swish_client.retrieve_recurring_consent(consent.consent_id)
+
+# Charge the customer against the active consent.
+payment = swish_client.create_recurring_payment(
+    consent.consent_id, 100.00, callback_url, message="Monthly subscription."
+)
+
+# Check payment status.
+payment_status = swish_client.retrieve_recurring_payment(payment.payment_id)
+
+# Update the callback URL on an existing consent.
+swish_client.update_recurring_consent_callback_url(consent.consent_id, "https://example.com/new-callback/")
+
+# Delete (cancel) the consent.
+swish_client.delete_recurring_consent(consent.consent_id)
+```
+
+### Example - QR Code API
+
+```python
+# Generate a prefilled QR code (payee + amount pre-set, editable by payer).
+qr_png = swish_client.create_prefilled_qr_code(
+    "png",
+    payee="1234679304",
+    amount=100.00,
+    amount_editable=True,
+    message="Order #1234",
+    size=300,
+)
+# qr_png is bytes -- write to a file or serve as an image response.
+
+# Generate an SVG QR code.
+qr_svg = swish_client.create_prefilled_qr_code("svg", payee="1234679304")
+# qr_svg is a str containing the SVG markup.
+
+# Generate a QR code from a commerce token (e.g. from create_payment).
+qr_commerce = swish_client.create_commerce_qr_code(
+    payment.payment_request_token, "png", size=300
+)
+```
 
 ### Example - Payout API
 

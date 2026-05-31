@@ -5,4 +5,4 @@ from .environments import Certificate, Certificates, Environment, ProductionEnvi
 from .exceptions import SwishError  # noqa F401
 from .models import Payment, Payout, RecurringAvailability, RecurringConsent, RecurringPayment, Refund  # noqa F401
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
