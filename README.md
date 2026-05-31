@@ -149,15 +149,32 @@ Clone the repository and set up a local virtual environment.
 
     python3 -m venv .venv
     source .venv/bin/activate
-    python3 -m pip install flit
-    flit install --only-deps
+    python3 -m pip install -U pip
+    python3 -m pip install -e .[tests]
 
-### Testing installing package and pytest
+### Testing
 
-Symlink getswish and run pytest. You might want to uninstall the getswish library depending on your workflow.
+Run all tests.
 
-    flit install --symlink
     pytest
+
+Run one focused test.
+
+    pytest tests/test_client.py::test_requests_create_payment
+
+Run coverage the same way as CI.
+
+    pytest --cov=src
+
+Run the source lint check.
+
+    ruff check src
+
+Build and check the package.
+
+    python3 -m pip install build twine
+    python3 -m build
+    twine check dist/*
 
 ### Testing using nox
 
