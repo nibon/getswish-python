@@ -30,6 +30,7 @@ tests = [
     "pytest >= 7",
     "pytest-mock",
     "pytest-cov >= 4",
+    "cryptography >= 42",
     "ruff",
     "nox",
 ]

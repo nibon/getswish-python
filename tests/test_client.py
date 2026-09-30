@@ -1,4 +1,13 @@
+import base64
 from dataclasses import dataclass
+import hashlib
+import json
+from pathlib import Path
+
+from cryptography import x509
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 import pytest
 import requests
 from requests import HTTPError
@@ -81,6 +90,21 @@ def test_requests_swish_error_object(client, callback_url, mocker):
     assert e_info.value.trace_id == "trace-id"
 
 
+def test_requests_swish_error_list_preserves_details(client, callback_url, mocker):
+    errors = [
+        {"errorCode": "first", "errorMessage": "invalid alias", "traceId": "trace-id", "field": "payeeAlias"},
+        {"errorCode": "second", "errorMessage": "invalid amount", "field": "amount"},
+    ]
+    mocker.patch.object(requests, "put", return_value=RequestsMockResponse(422, errors))
+
+    with pytest.raises(getswish.SwishError) as error:
+        client.create_payment(20.0, callback_url)
+
+    assert error.value.trace_id == "trace-id"
+    assert error.value.errors == {"first": "invalid alias", "second": "invalid amount"}
+    assert error.value.raw_errors == errors
+
+
 def test_requests_swish_error_text(client, callback_url, mocker):
     response = RequestsMockResponse(422, text="bad gateway")
     response.json = lambda: (_ for _ in ()).throw(ValueError())
@@ -88,6 +112,39 @@ def test_requests_swish_error_text(client, callback_url, mocker):
     with pytest.raises(getswish.SwishError) as e_info:
         client.create_payment(20.0, callback_url)
     assert e_info.value.errors == {"error": "bad gateway"}
+
+
+@pytest.mark.parametrize("status", [400, 415])
+def test_requests_swish_error_non_json_text(client, callback_url, mocker, status):
+    response = RequestsMockResponse(status, text="request rejected")
+    response.json = lambda: (_ for _ in ()).throw(ValueError())
+    mocker.patch.object(requests, "put", return_value=response)
+    with pytest.raises(getswish.SwishError) as error:
+        client.create_payment(20.0, callback_url)
+    assert error.value.errors == {"error": "request rejected"}
+
+
+@pytest.mark.parametrize("status", [400, 401, 415, 422, 500])
+def test_requests_empty_error_body_raises_http_error(client, mocker, status):
+    response = RequestsMockResponse(status)
+    response.json = lambda: (_ for _ in ()).throw(ValueError())
+    mocker.patch.object(requests, "post", return_value=response)
+    with pytest.raises(HTTPError):
+        client.create_commerce_qr_code("commerce-token", "png")
+
+
+@pytest.mark.parametrize("json_data", [[], {}])
+def test_requests_empty_json_error_raises_http_error(client, callback_url, mocker, json_data):
+    mocker.patch.object(requests, "put", return_value=RequestsMockResponse(422, json_data))
+    with pytest.raises(HTTPError):
+        client.create_payment(20.0, callback_url)
+
+
+def test_requests_other_status_json_error_raises_http_error(client, mocker):
+    error = {"errorCode": "server-error", "errorMessage": "failed"}
+    mocker.patch.object(requests, "post", return_value=RequestsMockResponse(500, error))
+    with pytest.raises(HTTPError):
+        client.create_commerce_qr_code("commerce-token", "png")
 
 
 def test_requests_create_payment(client, callback_url, t_payment_response, t_payment_created_headers, mocker):
@@ -138,6 +195,32 @@ def test_requests_create_payout(client, mocker, callback_url, t_payout, t_payout
     assert response.location == "https://payout/path/"
 
 
+def test_requests_create_payout_signature_matches_posted_payload(client, mocker, callback_url):
+    patched_post = mocker.patch.object(requests, "post", return_value=RequestsMockResponse(201, headers={}))
+    client.create_payout("order-123", "46731234567", "198810236383", 20.0, callback_url)
+
+    posted = patched_post.call_args.kwargs["json"]
+    payload = posted["payload"]
+    assert patched_post.call_args.kwargs["url"] == client._url("v1", "/payouts")
+    assert posted["callbackUrl"] == callback_url
+    assert payload["callbackUrl"] is None
+    assert payload["payeeSSN"] == "198810236383"
+    assert payload["payerPaymentReference"] == "order-123"
+
+    certificate = x509.load_pem_x509_certificate(Path(client.certificates.signing.public).read_bytes())
+    assert payload["signingCertificateSerialNumber"] == format(certificate.serial_number, "X")
+    public_key = certificate.public_key()
+    signature = base64.b64decode(posted["signature"], validate=True)
+    # The client signs the SHA-512 digest as data, so RSA/SHA-512 hashes that digest again.
+    digest = hashlib.sha512(json.dumps(payload).encode("utf-8")).digest()
+    public_key.verify(signature, digest, padding.PKCS1v15(), hashes.SHA512())
+
+    tampered = {**payload, "amount": 21.0}
+    tampered_digest = hashlib.sha512(json.dumps(tampered).encode("utf-8")).digest()
+    with pytest.raises(InvalidSignature):
+        public_key.verify(signature, tampered_digest, padding.PKCS1v15(), hashes.SHA512())
+
+
 def test_requests_retrieve_payout(client, callback_url, t_payout_response, mocker):
     mocker.patch.object(requests, "get", return_value=RequestsMockResponse(200, t_payout_response))
     response = client.retrieve_payout(t_payout_response["payoutInstructionUUID"])
@@ -182,6 +265,8 @@ def test_requests_create_recurring_mcommerce_consent(client, callback_url, t_rec
     called_url = patched_post.call_args.kwargs["url"]
     assert "/recurring/merchant/v1/consents/" in called_url
     assert called_url.endswith("/token")
+    assert patched_post.call_args.kwargs["json"]["payee"] == {"alias": client.merchant_swish_number}
+    assert patched_post.call_args.kwargs["headers"] is None
 
 
 def test_requests_update_recurring_consent_callback(client, callback_url, t_recurring_consent_response, mocker):
@@ -194,6 +279,18 @@ def test_requests_update_recurring_consent_callback(client, callback_url, t_recu
     assert patched_put.call_args.kwargs["url"] == expected_url
     assert patched_put.call_args.kwargs["json"] == {"callbackUrl": callback_url}
     assert patched_put.call_args.kwargs["headers"] == {"onBehalfOf": "partner"}
+
+
+def test_requests_update_recurring_consent_callback_without_response_body(client, callback_url, mocker):
+    response = RequestsMockResponse(204)
+    response.json = lambda: (_ for _ in ()).throw(ValueError())
+    patched_put = mocker.patch.object(requests, "put", return_value=response)
+
+    consent = client.update_recurring_consent_callback_url("consent-id", callback_url)
+
+    assert consent.consent_id == "consent-id"
+    assert consent.callback_url == callback_url
+    assert patched_put.call_args.kwargs["json"] == {"callbackUrl": callback_url}
 
 
 def test_requests_retrieve_recurring_consent(client, t_recurring_consent_response, mocker):
@@ -219,11 +316,15 @@ def test_requests_create_recurring_payment(client, callback_url, t_recurring_pay
         "post",
         return_value=RequestsMockResponse(201, t_recurring_payment_response, {"Location": "https://payment/path/"}),
     )
-    response = client.create_recurring_payment("consent-id", 20.0, callback_url, message="Recurring payment")
+    response = client.create_recurring_payment(
+        "consent-id", 20.0, callback_url, on_behalf_of="partner", message="Recurring payment"
+    )
     assert response.location == "https://payment/path/"
     called_url = patched_post.call_args.kwargs["url"]
     assert "/recurring/merchant/v1/payments/single/" in called_url
     assert patched_post.call_args.kwargs["json"]["consentId"] == "consent-id"
+    assert patched_post.call_args.kwargs["json"]["amount"] == {"value": 20.0, "currency": "SEK"}
+    assert patched_post.call_args.kwargs["headers"] == {"onBehalfOf": "partner"}
 
 
 def test_requests_retrieve_recurring_payment(client, t_recurring_payment_response, mocker):
@@ -336,3 +437,22 @@ def test_requests_create_commerce_qr_code(client, mocker):
 def test_requests_create_commerce_qr_invalid_format(client):
     with pytest.raises(ValueError, match="qr_format"):
         client.create_commerce_qr_code("token", "bmp")
+
+
+def test_requests_create_commerce_svg_qr_code(client, mocker):
+    patched_post = mocker.patch.object(
+        requests,
+        "post",
+        return_value=RequestsMockResponse(200, headers={"Content-Type": "image/svg+xml"}, content=b"<svg />"),
+    )
+    assert client.create_commerce_qr_code("commerce-token", "svg") == "<svg />"
+    assert patched_post.call_args.kwargs["headers"] == {"Accept": "image/svg+xml"}
+
+
+def test_requests_create_commerce_svg_qr_code_unexpected_content_type(client, mocker):
+    mocker.patch.object(
+        requests,
+        "post",
+        return_value=RequestsMockResponse(200, headers={"Content-Type": "text/html"}, content=b"<html>unexpected</html>"),
+    )
+    assert client.create_commerce_qr_code("commerce-token", "svg") == "<html>unexpected</html>"

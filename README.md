@@ -33,32 +33,38 @@ import getswish
 swish_client = getswish.SwishClient()
 
 callback_url = "https://example.com/callback/"
+```
 
 ### Example - Commerce API
 
-# Perform a payment request - E-commerce.
-payment_e = swish_client.create_payment(
+```python
+# Perform a payment request - M-commerce.
+payment_m = swish_client.create_payment(
     100.00, callback_url, message="Product name."
 )
 
-# Perform a payment request - M-commerce.
-payment_m = swish_client.create_payment(
+# Perform a payment request - E-commerce.
+payment_e = swish_client.create_payment(
     100.00, callback_url, "46701234567", message="Product name."
 )
 
 # Retrieve info about the payment
-payment_retrieved = swish_client.retrieve_payment(payment_m.id)
+payment_retrieved = swish_client.retrieve_payment(payment_e.id)
 
 # Cancel the payment
-payment_cancelled = swish_client.cancel_payment(payment_m.id)
+payment_cancelled = swish_client.cancel_payment(payment_e.id)
 
-# Refund payment the whole amount to the previous payer which now is the payee.
+# After the callback confirms payment_m is PAID, retrieve its payment reference and payer.
+paid_payment = swish_client.retrieve_payment(payment_m.id)
+
+# Refund the whole amount to the previous payer, who is now the refund payee.
 payment_refund = swish_client.create_refund(
-    payment_e.id, callback_url, payment_e.payer_alias, payment_e.amount
+    paid_payment.payment_reference, callback_url, paid_payment.payer_alias, paid_payment.amount
 )
 
 # Retrieve info about the refund
 payment_refund_retrieved = swish_client.retrieve_refund(payment_refund.id)
+```
 
 ### Example - Recurring Payments API
 
@@ -119,14 +125,18 @@ qr_png = swish_client.create_prefilled_qr_code(
 qr_svg = swish_client.create_prefilled_qr_code("svg", payee="1234679304")
 # qr_svg is a str containing the SVG markup.
 
-# Generate a QR code from a commerce token (e.g. from create_payment).
+# Create a fresh M-commerce request without a payer alias; use its token while pending.
+qr_payment = swish_client.create_payment(100.00, callback_url, message="QR purchase.")
+
+# Generate a QR code from this Commerce payment token, not a recurring consent token.
 qr_commerce = swish_client.create_commerce_qr_code(
-    payment.payment_request_token, "png", size=300
+    qr_payment.payment_request_token, "png", size=300
 )
 ```
 
 ### Example - Payout API
 
+```python
 # Generate a merchant specific reference.
 # This reference could be order id or similar.
 # Use generate_transaction_id for convenience.
@@ -144,12 +154,11 @@ payout = swish_client.create_payout(
 payout_retrieved = swish_client.retrieve_payout(payout.payout_instruction_uuid)
 ```
 
-## Example - Production Client
+## Example - Custom Test Client
 
-In production the environment must be set
-to `swish.ProductionEnvironment` and all path must be modified to the production certificates that you have generated
-through your bank and swish company portals. The example below is the default configuration for the test certificates
-and environment. Replace all paths and files with your generated production instances.
+This example explicitly uses `getswish.TestEnvironment` and the bundled test certificates. For production, use
+`getswish.ProductionEnvironment`, your issued communication certificate and key, the appropriate TLS trust certificate,
+and your merchant Swish number. Do not use the bundled test credentials in production.
 
 ```python
 from pathlib import Path
@@ -171,9 +180,11 @@ swish_client = getswish.SwishClient(
 )
 ```
 
-## Example - Production Client with payout
+## Example - Custom Test Client with Payout
 
-Using the payout API require an additional certificate from your bank and called a signing certificate.
+This is also a test configuration. Payout additionally requires a signing certificate, private key, and serial number.
+For production, use `getswish.ProductionEnvironment` and your issued communication and signing credentials instead of
+these bundled test files.
 
 ```python
 from pathlib import Path

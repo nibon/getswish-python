@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Corrected the README Commerce QR example to use a fresh pending M-commerce payment token and repaired its code blocks.
+- Corrected the README refund example to use the completed payment's reference and payer alias.
+- Clarified that the custom certificate configuration examples use test credentials, not production credentials.
+
 ## [0.4.0] - 2026-05-31
 
 ### Added
@@ -19,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `list[dict] | dict | str` inputs.
 - Added `recurring_base` and `qr_base` fields to `Environment`.
 - Added `_recurring_url` and `_qr_url` URL helpers to `SwishClient`.
-- Added `on_behalf_of` (partner header) support to all recurring and QR methods.
+- Added `on_behalf_of` (partner header) support to recurring methods.
 - Added Python 3.14 to nox and CI matrix.
 - Added CI workflow gates: ruff lint, package build, and twine check.
 - Added Python 3.10–3.14 classifiers to `pyproject.toml`.
