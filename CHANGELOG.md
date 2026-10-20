@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added stable Python 3.15 to the required CI and Nox test matrices and package classifiers, retaining Python 3.10 support.
+
+### Changed
+
+- Moved CI coverage, lint, and package checks to Python 3.15 and aligned Ruff's target with the Python 3.10 minimum.
+
 ### Fixed
 
 - Corrected the README Commerce QR example to use a fresh pending M-commerce payment token and repaired its code blocks.
