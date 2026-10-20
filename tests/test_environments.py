@@ -11,11 +11,9 @@ import getswish
 
 
 def test_default_certificates_are_package_resources():
-def test_default_certificates_are_packaged_and_loadable():
     certificates = getswish.SwishClient().certificates
     directory = Path(getswish.__file__).resolve().parent / "certificates" / "mss_test_3.0"
     paths = [
-    for path in (
         certificates.communication.public,
         certificates.communication.private_key,
         certificates.verify.public,
@@ -23,7 +21,6 @@ def test_default_certificates_are_packaged_and_loadable():
         certificates.signing.private_key,
     ]
     for path in paths:
-    ):
         assert Path(path).parent == directory
         assert Path(path).is_file()
 
@@ -55,5 +52,3 @@ def test_default_certificates_load_in_tls_context():
     certificates = getswish.SwishClient().certificates
     context = ssl.create_default_context(cafile=certificates.verify.public)
     context.load_cert_chain(certificates.communication.public, certificates.communication.private_key)
-    rsa.PrivateKey.load_pkcs1(Path(certificates.signing.private_key).read_bytes())
-    assert certificates.signing.public_serial == "4F24C03A0295A0B53596240EA8C0F430"

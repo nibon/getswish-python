@@ -3,7 +3,6 @@ from copy import deepcopy
 import pytest
 
 import getswish
-from getswish.environments import cert_base
 from getswish.environments import TestCertificates
 
 
@@ -27,18 +26,6 @@ def client() -> getswish.SwishClient:
     return getswish.SwishClient(
         environment=getswish.TestEnvironment,
         certificates=deepcopy(TestCertificates),
-        certificates=getswish.Certificates(
-            communication=getswish.Certificate(
-                public=f"{cert_base}/Swish_Merchant_TestCertificate_1234679304.pem",
-                private_key=f"{cert_base}/Swish_Merchant_TestCertificate_1234679304.key",
-            ),
-            verify=getswish.Certificate(public=f"{cert_base}/Swish_TLS_RootCA.pem"),
-            signing=getswish.Certificate(
-                public=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.pem",
-                private_key=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.key",
-                public_serial="4F24C03A0295A0B53596240EA8C0F430",
-            ),
-        ),
         merchant_swish_number="1234679304",
     )
 
