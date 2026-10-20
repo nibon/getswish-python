@@ -1,8 +1,9 @@
-from pathlib import Path
+from copy import deepcopy
 
 import pytest
 
 import getswish
+from getswish.environments import TestCertificates
 
 
 @pytest.fixture
@@ -22,21 +23,9 @@ def client_default() -> getswish.SwishClient:
 
 @pytest.fixture
 def client() -> getswish.SwishClient:
-    cert_base = Path(__file__).parent.parent.resolve() / "mss_test_2.0" / "Getswish_Test_Certificates"
     return getswish.SwishClient(
         environment=getswish.TestEnvironment,
-        certificates=getswish.Certificates(
-            communication=getswish.Certificate(
-                public=f"{cert_base}/Swish_Merchant_TestCertificate_1234679304.pem",
-                private_key=f"{cert_base}/Swish_Merchant_TestCertificate_1234679304.key",
-            ),
-            verify=getswish.Certificate(public=f"{cert_base}/Swish_TLS_RootCA.pem"),
-            signing=getswish.Certificate(
-                public=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.pem",
-                private_key=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.key",
-                public_serial="5E24D8820F5B62C7E5CAC75D20D6E754",
-            ),
-        ),
+        certificates=deepcopy(TestCertificates),
         merchant_swish_number="1234679304",
     )
 
@@ -174,3 +163,62 @@ def t_payout_response():
 @pytest.fixture
 def t_payout_created_headers():
     return {"Location": "https://payout/path/"}
+
+
+@pytest.fixture
+def t_recurring_consent():
+    from getswish import RecurringConsent
+
+    return RecurringConsent(
+        consent_id="consent-id",
+        callback_url="https://example.com/recurring/callback",
+        payee_alias="1234679304",
+        payer_alias="46701234567",
+        payee_payment_reference="order-123",
+        status="CREATED",
+    )
+
+
+@pytest.fixture
+def t_recurring_consent_response():
+    return {
+        "consentId": "consent-id",
+        "callbackUrl": "https://example.com/recurring/callback",
+        "payer": {"alias": "46701234567"},
+        "payee": {"alias": "1234679304"},
+        "payeePaymentReference": "order-123",
+        "status": "ACTIVE",
+        "subStatus": None,
+        "activatedAt": "2024-10-28T11:52:08.903863Z",
+    }
+
+
+@pytest.fixture
+def t_recurring_payment():
+    from getswish import RecurringPayment
+
+    return RecurringPayment(
+        payment_id="payment-id",
+        consent_id="consent-id",
+        callback_url="https://example.com/recurring/payment-callback",
+        payee_alias="1234679304",
+        amount=20.0,
+        message="Recurring payment",
+        status="CREATED",
+    )
+
+
+@pytest.fixture
+def t_recurring_payment_response():
+    return {
+        "paymentId": "payment-id",
+        "statusAt": "2024-10-28T11:52:08.903863Z",
+        "status": "PAID",
+    }
+
+
+@pytest.fixture
+def t_recurring_availability_response():
+    return {
+        "recurringIsOffered": True,
+    }

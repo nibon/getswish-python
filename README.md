@@ -6,6 +6,11 @@ Client library to integrate with the swish commerce and payout api.
 
 * https://developer.swish.nu/documentation/getting-started/swish-commerce-api
 * https://developer.swish.nu/documentation/getting-started/swish-payout-api
+* https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api (experimental)
+* https://developer.swish.nu/documentation/getting-started/swish-qr-code (experimental)
+
+Recurring and QR support is experimental in 0.4.0. Contract validation and stabilization are deferred to 0.5.0;
+these interfaces may change. Commerce and Payout are not experimental.
 
 ## Installation
 
@@ -23,7 +28,9 @@ The signing certificate, private key and serial is only required when using the 
 
 ## Example - Test Client
 
-The example code uses the test environment and certificates in this library.
+The example uses the public MSS 3.0 test credentials bundled with the installed library, valid until September 11, 2027.
+Do not use these credentials in production. Source: the [MSS 3.0 bundle](https://assets.ctfassets.net/4dca8u8ebqnn/4CgQJUfc6ncjKHooAkqvDx/d27012ce097a5b0f6b151a8ccdfe285d/MSS_test_3.0.zip)
+from [Swish test environments](https://developer.swish.nu/documentation/environments).
 
 ```python
 import getswish
@@ -31,35 +38,110 @@ import getswish
 swish_client = getswish.SwishClient()
 
 callback_url = "https://example.com/callback/"
+```
 
 ### Example - Commerce API
 
-# Perform a payment request - E-commerce.
-payment_e = swish_client.create_payment(
+```python
+# Perform a payment request - M-commerce.
+payment_m = swish_client.create_payment(
     100.00, callback_url, message="Product name."
 )
 
-# Perform a payment request - M-commerce.
-payment_m = swish_client.create_payment(
+# Perform a payment request - E-commerce.
+payment_e = swish_client.create_payment(
     100.00, callback_url, "46701234567", message="Product name."
 )
 
 # Retrieve info about the payment
-payment_retrieved = swish_client.retrieve_payment(payment_m.id)
+payment_retrieved = swish_client.retrieve_payment(payment_e.id)
 
 # Cancel the payment
-payment_cancelled = swish_client.cancel_payment(payment_m.id)
+payment_cancelled = swish_client.cancel_payment(payment_e.id)
 
-# Refund payment the whole amount to the previous payer which now is the payee.
+# After the callback confirms payment_m is PAID, retrieve its payment reference and payer.
+paid_payment = swish_client.retrieve_payment(payment_m.id)
+
+# Refund the whole amount to the previous payer, who is now the refund payee.
 payment_refund = swish_client.create_refund(
-    payment_e.id, callback_url, payment_e.payer_alias, payment_e.amount
+    paid_payment.payment_reference, callback_url, paid_payment.payer_alias, paid_payment.amount
 )
 
 # Retrieve info about the refund
 payment_refund_retrieved = swish_client.retrieve_refund(payment_refund.id)
+```
+
+### Example - Recurring Payments API (experimental)
+
+Recurring payments allow a merchant to charge a customer on a consent basis. The customer signs
+a consent once (via e-commerce or m-commerce flow), and the merchant can then initiate payments
+against that consent without further customer interaction.
+
+```python
+# Check if the payer's bank supports recurring payments for their alias.
+availability = swish_client.check_recurring_alias_availability("46701234567")
+if not availability.recurring_is_offered:
+    raise Exception("Recurring payments not available for this payer.")
+
+# Create a recurring consent - E-commerce flow (payer alias known).
+consent = swish_client.create_recurring_ecommerce_consent(
+    callback_url, "46701234567", payee_payment_reference="subscription-001"
+)
+
+# Create a recurring consent - M-commerce flow (payer alias unknown; token shown to user).
+consent_m = swish_client.create_recurring_mcommerce_consent(
+    callback_url, payee_payment_reference="subscription-001"
+)
+# consent_m.payment_request_token -- show this to the payer in the Swish app.
+
+# Retrieve consent info (e.g. after callback confirms ACTIVE status).
+consent_active = swish_client.retrieve_recurring_consent(consent.consent_id)
+
+# Charge the customer against the active consent.
+payment = swish_client.create_recurring_payment(
+    consent.consent_id, 100.00, callback_url, message="Monthly subscription."
+)
+
+# Check payment status.
+payment_status = swish_client.retrieve_recurring_payment(payment.payment_id)
+
+# Update the callback URL on an existing consent.
+swish_client.update_recurring_consent_callback_url(consent.consent_id, "https://example.com/new-callback/")
+
+# Delete (cancel) the consent.
+swish_client.delete_recurring_consent(consent.consent_id)
+```
+
+### Example - QR Code API (experimental)
+
+```python
+# Generate a prefilled QR code (payee + amount pre-set, editable by payer).
+qr_png = swish_client.create_prefilled_qr_code(
+    "png",
+    payee="1234679304",
+    amount=100.00,
+    amount_editable=True,
+    message="Order #1234",
+    size=300,
+)
+# qr_png is bytes -- write to a file or serve as an image response.
+
+# Generate an SVG QR code.
+qr_svg = swish_client.create_prefilled_qr_code("svg", payee="1234679304")
+# qr_svg is a str containing the SVG markup.
+
+# Create a fresh M-commerce request without a payer alias; use its token while pending.
+qr_payment = swish_client.create_payment(100.00, callback_url, message="QR purchase.")
+
+# Generate a QR code from this Commerce payment token, not a recurring consent token.
+qr_commerce = swish_client.create_commerce_qr_code(
+    qr_payment.payment_request_token, "png", size=300
+)
+```
 
 ### Example - Payout API
 
+```python
 # Generate a merchant specific reference.
 # This reference could be order id or similar.
 # Use generate_transaction_id for convenience.
@@ -77,19 +159,17 @@ payout = swish_client.create_payout(
 payout_retrieved = swish_client.retrieve_payout(payout.payout_instruction_uuid)
 ```
 
-## Example - Production Client
+## Example - Custom Test Client
 
-In production the environment must be set
-to `swish.ProductionEnvironment` and all path must be modified to the production certificates that you have generated
-through your bank and swish company portals. The example below is the default configuration for the test certificates
-and environment. Replace all paths and files with your generated production instances.
+This example explicitly uses `getswish.TestEnvironment` and the bundled test certificates. For production, use
+`getswish.ProductionEnvironment`, your issued communication certificate and key, the appropriate TLS trust certificate,
+and your merchant Swish number. Do not use the bundled test credentials in production.
 
 ```python
 from pathlib import Path
 import getswish
 
-cert_base = Path(__file__).parent.parent.parent.resolve()
-cert_base = cert_base / "mss_test_2.0" / "Getswish_Test_Certificates"
+cert_base = Path(getswish.__file__).resolve().parent / "certificates" / "mss_test_3.0"
 
 swish_client = getswish.SwishClient(
     environment=getswish.TestEnvironment,
@@ -104,16 +184,17 @@ swish_client = getswish.SwishClient(
 )
 ```
 
-## Example - Production Client with payout
+## Example - Custom Test Client with Payout
 
-Using the payout API require an additional certificate from your bank and called a signing certificate.
+This is also a test configuration. Payout additionally requires a signing certificate, private key, and serial number.
+For production, use `getswish.ProductionEnvironment` and your issued communication and signing credentials instead of
+these bundled test files.
 
 ```python
 from pathlib import Path
 import getswish
 
-cert_base = Path(__file__).parent.parent.parent.resolve()
-cert_base = cert_base / "mss_test_2.0" / "Getswish_Test_Certificates"
+cert_base = Path(getswish.__file__).resolve().parent / "certificates" / "mss_test_3.0"
 
 swish_client = getswish.SwishClient(
     environment=getswish.TestEnvironment,
@@ -126,7 +207,7 @@ swish_client = getswish.SwishClient(
         signing=getswish.Certificate(
             public=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.pem",
             private_key=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.key",
-            public_serial="5E24D8820F5B62C7E5CAC75D20D6E754",
+            public_serial="4F24C03A0295A0B53596240EA8C0F430",
         ),
     ),
     merchant_swish_number="1234679304",
@@ -149,18 +230,56 @@ Clone the repository and set up a local virtual environment.
 
     python3 -m venv .venv
     source .venv/bin/activate
-    python3 -m pip install flit
-    flit install --only-deps
+    python3 -m pip install -U pip
+    python3 -m pip install -e .[tests]
 
-### Testing installing package and pytest
+### Testing
 
-Symlink getswish and run pytest. You might want to uninstall the getswish library depending on your workflow.
+Run all tests.
 
-    flit install --symlink
     pytest
+
+Run one focused test.
+
+    pytest tests/test_client.py::test_requests_create_payment
+
+Run coverage the same way as CI.
+
+    pytest --cov=src
+
+Run the source lint check.
+
+    ruff check src
+
+Build and check the package.
+
+    python3 -m pip install build twine
+    python3 -m build
+    twine check dist/*
 
 ### Testing using nox
 
 Isolated testing on configured python versions and running a coverage test.
 
     nox
+
+### Release workflow
+
+Install test tools and Flit in your active virtual environment:
+
+    python -m pip install -e ".[tests,deploy]"
+    make help
+
+`make bump-patch`, `make bump-minor`, and `make bump-major` increment the version and commit only
+`src/getswish/__init__.py`, preserving unrelated staged work. Update the changelog and manage tags/pushes manually.
+If a commit fails, review `git diff` before retrying.
+
+    make check         # Python 3.10-3.15 tests, coverage, and lint; all interpreters required.
+    make build         # flit build; distributions go to dist/.
+    make publish-test  # flit publish --repository testpypi
+    make publish       # flit publish to PyPI
+
+Commit or ignore local files before release builds; Flit's normal VCS checks apply.
+Review the release changes and wait for CI before publishing. Configure credentials using Flit's standard
+authentication and `.pypirc` settings; TestPyPI uses a separate repository entry. No command pushes Git changes.
+Override the interpreter with `PYTHON`, for example `make build PYTHON=.venv/bin/python`.
