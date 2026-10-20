@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-cert_base = Path(__file__).parent.parent.parent.resolve() / "mss_test_2.0" / "Getswish_Test_Certificates"
+cert_base = Path(__file__).resolve().parent / "certificates" / "mss_test_3.0"
 
 
 @dataclass
@@ -48,6 +48,6 @@ TestCertificates = Certificates(
     Certificate(
         public=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.pem",
         private_key=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.key",
-        public_serial="5E24D8820F5B62C7E5CAC75D20D6E754",
+        public_serial="4F24C03A0295A0B53596240EA8C0F430",
     ),
 )

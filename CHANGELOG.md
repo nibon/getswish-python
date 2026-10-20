@@ -14,9 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Moved CI coverage, lint, and package checks to Python 3.15 and aligned Ruff's target with the Python 3.10 minimum.
+- Marked Recurring and QR APIs experimental in 0.4.0; contract validation and stabilization are deferred to 0.5.0.
 
 ### Fixed
 
+- Replaced expired MSS 2.0 test credentials with MSS 3.0 credentials and included them in installed packages.
 - Corrected the README Commerce QR example to use a fresh pending M-commerce payment token and repaired its code blocks.
 - Corrected the README refund example to use the completed payment's reference and payer alias.
 - Clarified that the custom certificate configuration examples use test credentials, not production credentials.
@@ -25,11 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added Recurring Payments API: `create_recurring_ecommerce_consent`, `create_recurring_mcommerce_consent`,
+- Added experimental Recurring Payments API: `create_recurring_ecommerce_consent`, `create_recurring_mcommerce_consent`,
   `update_recurring_consent_callback_url`, `retrieve_recurring_consent`, `delete_recurring_consent`,
   `create_recurring_payment`, `retrieve_recurring_payment`, `check_recurring_tin_availability`,
   `check_recurring_alias_availability`.
-- Added QR Code API: `create_prefilled_qr_code`, `create_commerce_qr_code`.
+- Added experimental QR Code API: `create_prefilled_qr_code`, `create_commerce_qr_code`.
 - Added `RecurringConsent`, `RecurringPayment`, `RecurringAvailability` model classes.
 - Added `SwishError.raw_errors` and `SwishError.trace_id` attributes; `SwishError` now accepts
   `list[dict] | dict | str` inputs.

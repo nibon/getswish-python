@@ -6,8 +6,11 @@ Client library to integrate with the swish commerce and payout api.
 
 * https://developer.swish.nu/documentation/getting-started/swish-commerce-api
 * https://developer.swish.nu/documentation/getting-started/swish-payout-api
-* https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api
-* https://developer.swish.nu/documentation/getting-started/swish-qr-code
+* https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api (experimental)
+* https://developer.swish.nu/documentation/getting-started/swish-qr-code (experimental)
+
+Recurring and QR support is experimental in 0.4.0. Contract validation and stabilization are deferred to 0.5.0;
+these interfaces may change. Commerce and Payout are not experimental.
 
 ## Installation
 
@@ -25,7 +28,9 @@ The signing certificate, private key and serial is only required when using the 
 
 ## Example - Test Client
 
-The example code uses the test environment and certificates in this library.
+The example uses the public MSS 3.0 test credentials bundled with the installed library, valid until September 11, 2027.
+Do not use these credentials in production. Source: the [MSS 3.0 bundle](https://assets.ctfassets.net/4dca8u8ebqnn/4CgQJUfc6ncjKHooAkqvDx/d27012ce097a5b0f6b151a8ccdfe285d/MSS_test_3.0.zip)
+from [Swish test environments](https://developer.swish.nu/documentation/environments).
 
 ```python
 import getswish
@@ -66,7 +71,7 @@ payment_refund = swish_client.create_refund(
 payment_refund_retrieved = swish_client.retrieve_refund(payment_refund.id)
 ```
 
-### Example - Recurring Payments API
+### Example - Recurring Payments API (experimental)
 
 Recurring payments allow a merchant to charge a customer on a consent basis. The customer signs
 a consent once (via e-commerce or m-commerce flow), and the merchant can then initiate payments
@@ -107,7 +112,7 @@ swish_client.update_recurring_consent_callback_url(consent.consent_id, "https://
 swish_client.delete_recurring_consent(consent.consent_id)
 ```
 
-### Example - QR Code API
+### Example - QR Code API (experimental)
 
 ```python
 # Generate a prefilled QR code (payee + amount pre-set, editable by payer).
@@ -164,8 +169,7 @@ and your merchant Swish number. Do not use the bundled test credentials in produ
 from pathlib import Path
 import getswish
 
-cert_base = Path(__file__).parent.parent.parent.resolve()
-cert_base = cert_base / "mss_test_2.0" / "Getswish_Test_Certificates"
+cert_base = Path(getswish.__file__).resolve().parent / "certificates" / "mss_test_3.0"
 
 swish_client = getswish.SwishClient(
     environment=getswish.TestEnvironment,
@@ -190,8 +194,7 @@ these bundled test files.
 from pathlib import Path
 import getswish
 
-cert_base = Path(__file__).parent.parent.parent.resolve()
-cert_base = cert_base / "mss_test_2.0" / "Getswish_Test_Certificates"
+cert_base = Path(getswish.__file__).resolve().parent / "certificates" / "mss_test_3.0"
 
 swish_client = getswish.SwishClient(
     environment=getswish.TestEnvironment,
@@ -204,7 +207,7 @@ swish_client = getswish.SwishClient(
         signing=getswish.Certificate(
             public=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.pem",
             private_key=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.key",
-            public_serial="5E24D8820F5B62C7E5CAC75D20D6E754",
+            public_serial="4F24C03A0295A0B53596240EA8C0F430",
         ),
     ),
     merchant_swish_number="1234679304",

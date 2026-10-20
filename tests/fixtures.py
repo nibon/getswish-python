@@ -1,8 +1,9 @@
-from pathlib import Path
+from copy import deepcopy
 
 import pytest
 
 import getswish
+from getswish.environments import TestCertificates
 
 
 @pytest.fixture
@@ -22,21 +23,9 @@ def client_default() -> getswish.SwishClient:
 
 @pytest.fixture
 def client() -> getswish.SwishClient:
-    cert_base = Path(__file__).parent.parent.resolve() / "mss_test_2.0" / "Getswish_Test_Certificates"
     return getswish.SwishClient(
         environment=getswish.TestEnvironment,
-        certificates=getswish.Certificates(
-            communication=getswish.Certificate(
-                public=f"{cert_base}/Swish_Merchant_TestCertificate_1234679304.pem",
-                private_key=f"{cert_base}/Swish_Merchant_TestCertificate_1234679304.key",
-            ),
-            verify=getswish.Certificate(public=f"{cert_base}/Swish_TLS_RootCA.pem"),
-            signing=getswish.Certificate(
-                public=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.pem",
-                private_key=f"{cert_base}/Swish_Merchant_TestSigningCertificate_1234679304.key",
-                public_serial="5E24D8820F5B62C7E5CAC75D20D6E754",
-            ),
-        ),
+        certificates=deepcopy(TestCertificates),
         merchant_swish_number="1234679304",
     )
 
