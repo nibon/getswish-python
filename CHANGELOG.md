@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added stable Python 3.15 to the required CI and Nox test matrices and package classifiers, retaining Python 3.10 support.
+- Added Makefile commands for checks, version-only bump commits, and Flit builds/publication.
 
 ### Changed
 

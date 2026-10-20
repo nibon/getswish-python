@@ -262,3 +262,24 @@ Build and check the package.
 Isolated testing on configured python versions and running a coverage test.
 
     nox
+
+### Release workflow
+
+Install test tools and Flit in your active virtual environment:
+
+    python -m pip install -e ".[tests,deploy]"
+    make help
+
+`make bump-patch`, `make bump-minor`, and `make bump-major` increment the version and commit only
+`src/getswish/__init__.py`, preserving unrelated staged work. Update the changelog and manage tags/pushes manually.
+The version is already 0.4.0, so do not bump again when releasing 0.4.0. If a commit fails, review `git diff` before retrying.
+
+    make check         # Python 3.10-3.15 tests, coverage, and lint; all interpreters required.
+    make build         # flit build; distributions go to dist/.
+    make publish-test  # flit publish --repository testpypi
+    make publish       # flit publish to PyPI
+
+Commit or ignore local files before release builds; Flit's normal VCS checks apply.
+Review the release changes and wait for CI before publishing. Configure credentials using Flit's standard
+authentication and `.pypirc` settings; TestPyPI uses a separate repository entry. No command pushes Git changes.
+Override the interpreter with `PYTHON`, for example `make build PYTHON=.venv/bin/python`.
