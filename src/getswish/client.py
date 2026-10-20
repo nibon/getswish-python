@@ -208,6 +208,8 @@ class SwishClient:
         on_behalf_of: str | None = None,
         **kwargs,
     ) -> RecurringConsent:
+        """https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api"""
+
         consent = RecurringConsent(
             callback_url=callback_url,
             payee_alias=kwargs.pop("payee_alias", self.merchant_swish_number),
@@ -231,6 +233,8 @@ class SwishClient:
         on_behalf_of: str | None = None,
         **kwargs,
     ) -> RecurringConsent:
+        """https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api"""
+
         consent = RecurringConsent(
             callback_url=callback_url,
             payee_alias=kwargs.pop("payee_alias", self.merchant_swish_number),
@@ -254,6 +258,8 @@ class SwishClient:
         /,
         on_behalf_of: str | None = None,
     ) -> RecurringConsent:
+        """https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api"""
+
         response = self._requests(
             "put",
             self._recurring_url(f"/recurring/merchant/v1/consent/{consent_id}/callback"),
@@ -271,6 +277,8 @@ class SwishClient:
         /,
         on_behalf_of: str | None = None,
     ) -> RecurringConsent:
+        """https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api"""
+
         response = self._requests(
             "get",
             self._recurring_url(f"/recurring/merchant/v1/consents/{consent_id}"),
@@ -284,6 +292,8 @@ class SwishClient:
         /,
         on_behalf_of: str | None = None,
     ) -> Response:
+        """https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api"""
+
         return self._requests(
             "delete",
             self._recurring_url(f"/recurring/merchant/v1/consents/{consent_id}"),
@@ -299,6 +309,8 @@ class SwishClient:
         on_behalf_of: str | None = None,
         **kwargs,
     ) -> RecurringPayment:
+        """https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api"""
+
         payment = RecurringPayment(
             consent_id=consent_id,
             amount=amount,
@@ -322,6 +334,8 @@ class SwishClient:
         /,
         on_behalf_of: str | None = None,
     ) -> RecurringPayment:
+        """https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api"""
+
         response = self._requests(
             "get",
             self._recurring_url(f"/recurring/merchant/v1/payments/single/{payment_id}/status"),
@@ -335,6 +349,8 @@ class SwishClient:
         /,
         on_behalf_of: str | None = None,
     ) -> RecurringAvailability:
+        """https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api"""
+
         response = self._requests(
             "post",
             self._recurring_url("/recurring/merchant/v1/recurring/tin"),
@@ -349,6 +365,8 @@ class SwishClient:
         /,
         on_behalf_of: str | None = None,
     ) -> RecurringAvailability:
+        """https://developer.swish.nu/documentation/getting-started/swish-recurring-payments-api"""
+
         response = self._requests(
             "post",
             self._recurring_url("/recurring/merchant/v1/recurring/alias"),
@@ -363,6 +381,8 @@ class SwishClient:
         /,
         **kwargs,
     ) -> bytes | str:
+        """https://developer.swish.nu/documentation/getting-started/swish-qr-code"""
+
         if qr_format not in {"jpg", "png", "svg"}:
             raise ValueError(f"qr_format must be one of 'jpg', 'png', 'svg'; got {qr_format!r}")
 
@@ -393,6 +413,8 @@ class SwishClient:
         /,
         **kwargs,
     ) -> bytes | str:
+        """https://developer.swish.nu/documentation/getting-started/swish-qr-code"""
+
         if qr_format not in {"jpg", "png", "svg"}:
             raise ValueError(f"qr_format must be one of 'jpg', 'png', 'svg'; got {qr_format!r}")
         payload = {"token": token, "format": qr_format, **{k: v for k, v in kwargs.items() if v is not None}}
