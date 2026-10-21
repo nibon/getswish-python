@@ -40,6 +40,12 @@ swish_client = getswish.SwishClient()
 callback_url = "https://example.com/callback/"
 ```
 
+All requests default to a 10-second connect timeout and a 30-second read timeout.
+Configure these with `getswish.SwishClient(timeout=(5.0, 60.0))`, use a single number for both,
+or set `timeout=None` to disable timeouts. The read timeout limits waiting between received data,
+not the total request duration. Timeouts raise Requests exceptions, not `SwishError`.
+After a payment or payout timeout, check its status before retrying; the server may have accepted it.
+
 ### Example - Commerce API
 
 ```python
@@ -245,62 +251,61 @@ except requests.RequestException as error:
 
 ## Development setup
 
-Clone the repository and set up a local virtual environment.
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) (CI uses uv 0.13.1), clone the repository,
+and sync the locked development environment. uv installs the required Python if necessary.
 
     git clone https://github.com/nibon/getswish-python.git && cd getswish-python
 
-    python3 -m venv .venv
-    source .venv/bin/activate
-    python3 -m pip install -U pip
-    python3 -m pip install -e .[tests]
+    uv sync --locked
 
 ### Testing
 
 Run all tests.
 
-    pytest
+    uv run --locked pytest
 
 Run one focused test.
 
-    pytest tests/test_client.py::test_requests_create_payment
+    uv run --locked pytest tests/test_client.py::test_requests_create_payment
 
 Run coverage the same way as CI.
 
-    pytest --cov=src
+    uv run --locked pytest --cov=src
 
 Run the source lint check.
 
-    ruff check src
+    uv run --locked ruff check src
+
+Run the source-only type check (Python 3.10 is the minimum supported version).
+
+    uv run --locked ty check src
 
 Build and check the package.
 
-    python3 -m pip install build twine
-    python3 -m build
-    twine check dist/*
+    uv build
+    uv run --locked twine check dist/getswish-*.whl dist/getswish-*.tar.gz
 
-### Testing using nox
+To test another interpreter locally, run `uv run --locked --python 3.10 pytest` (or 3.11-3.15).
+CI runs the full six-version matrix; uv does not provide a single-command matrix runner.
 
-Isolated testing on configured python versions and running a coverage test.
-
-    nox
+The lockfile is for development; library consumers use the dependency ranges in `pyproject.toml`.
 
 ### Release workflow
 
-Install test tools and Flit in your active virtual environment:
+Update the changelog, then bump the version with `uv version --bump patch` (or `minor` or `major`).
+uv normally updates `pyproject.toml` and `uv.lock` and syncs the environment; it does not commit or tag.
+Review the diff and commit the version, lockfile, and changelog with ordinary Git commands. To keep unrelated
+staged changes out of the release commit, specify paths with `git commit --only -- pyproject.toml uv.lock CHANGELOG.md`.
+CI runs the full matrix, coverage, lint, types, build, distribution validation, and installed-resource checks.
 
-    python -m pip install -e ".[tests,deploy]"
-    make help
+    uv build
+    uv run --locked twine check dist/getswish-*.whl dist/getswish-*.tar.gz
 
-`make bump-patch`, `make bump-minor`, and `make bump-major` increment the version and commit only
-`src/getswish/__init__.py`, preserving unrelated staged work. Update the changelog and manage tags/pushes manually.
-If a commit fails, review `git diff` before retrying.
+Review the changes and wait for CI. `uv publish` uploads existing artifacts; it does not build them.
+Select only the artifacts for the current version, not all files under `dist/`. For example, for version 0.4.0:
 
-    make check         # Python 3.10-3.15 tests, coverage, and lint; all interpreters required.
-    make build         # flit build; distributions go to dist/.
-    make publish-test  # flit publish --repository testpypi
-    make publish       # flit publish to PyPI
+    uv publish --index testpypi dist/getswish-0.4.0-py3-none-any.whl dist/getswish-0.4.0.tar.gz
+    uv publish dist/getswish-0.4.0-py3-none-any.whl dist/getswish-0.4.0.tar.gz
 
-Commit or ignore local files before release builds; Flit's normal VCS checks apply.
-Review the release changes and wait for CI before publishing. Configure credentials using Flit's standard
-authentication and `.pypirc` settings; TestPyPI uses a separate repository entry. No command pushes Git changes.
-Override the interpreter with `PYTHON`, for example `make build PYTHON=.venv/bin/python`.
+Set `UV_PUBLISH_TOKEN` to the appropriate API token for each destination (TestPyPI and PyPI use different tokens).
+The `testpypi` publish index is configured in `pyproject.toml`. Never reuse a TestPyPI token on PyPI.

@@ -1,5 +1,6 @@
 import base64
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -13,6 +14,7 @@ import requests
 from requests import HTTPError
 
 import getswish
+from getswish.environments import TestCertificates
 
 
 from .fixtures import *  # noqa F403
@@ -38,8 +40,44 @@ def test_client_init_default(client_default):
     assert client_default is not None
 
 
+def test_default_clients_have_independent_configuration():
+    first = getswish.SwishClient()
+    second = getswish.SwishClient()
+    assert first.environment is not second.environment
+    assert first.certificates is not second.certificates
+    for name in ("communication", "verify", "signing"):
+        assert getattr(first.certificates, name) is not getattr(second.certificates, name)
+        assert getattr(first.certificates, name) is not getattr(TestCertificates, name)
+
+    first.environment.base = "https://changed.example/"
+    first.certificates.communication.public = "changed.pem"
+    first.certificates.verify.public = "changed-ca.pem"
+    first.certificates.signing.private_key = "changed.key"
+
+    assert second.environment.base == getswish.TestEnvironment.base
+    assert second.certificates.communication.public == TestCertificates.communication.public
+    assert second.certificates.verify.public == TestCertificates.verify.public
+    assert second.certificates.signing.private_key == TestCertificates.signing.private_key
+    assert getswish.SwishClient().certificates.communication.public == TestCertificates.communication.public
+
+
+def test_explicit_client_configuration_preserves_identity():
+    client = getswish.SwishClient(getswish.TestEnvironment, TestCertificates)
+    assert client.environment is getswish.TestEnvironment
+    assert client.certificates is TestCertificates
+
+
 def test_client_init(client):
     assert client is not None
+
+
+@pytest.mark.parametrize("options", [
+    {"environment": getswish.TestEnvironment},
+    {"certificates": getswish.Certificates(None, None)},
+])
+def test_client_init_requires_environment_and_certificates(options):
+    with pytest.raises(ValueError, match="environment and certificates must be provided together"):
+        getswish.SwishClient(**options)
 
 
 def test_url(client):
@@ -65,8 +103,56 @@ def test_sign_payload(client):
 
 def test_sign_payload_missing(client):
     client.certificates.signing = None
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match="signing certificate private key is required"):
         client._sign_payload({"foo": "bar"})
+
+
+def test_sign_payload_missing_private_key(client):
+    client.certificates.signing.private_key = None
+    with pytest.raises(ValueError, match="signing certificate private key is required"):
+        client._sign_payload({"foo": "bar"})
+
+
+def test_create_payout_missing_signing_certificate(client, callback_url):
+    client.certificates.signing = None
+    with pytest.raises(ValueError, match="signing certificate is required for payouts"):
+        client.create_payout("reference", "46701234567", "197001019876", 10, callback_url)
+
+
+@pytest.mark.parametrize("missing", ["communication", "verify"])
+def test_requests_missing_certificate(client, missing):
+    setattr(client.certificates, missing, None)
+    with pytest.raises(ValueError, match="communication and verify certificates are required"):
+        client._requests("get", "https://example.com")
+
+
+@pytest.mark.parametrize("method", ["get", "post", "put", "patch", "delete"])
+def test_requests_default_timeout(client, mocker, method):
+    request = mocker.patch.object(requests, method, return_value=RequestsMockResponse())
+
+    client._requests(method, "https://example.com")
+
+    assert request.call_args.kwargs["timeout"] == (10.0, 30.0)
+
+
+@pytest.mark.parametrize("timeout", [5.0, (2.0, 15.0), None])
+def test_client_custom_timeout(callback_url, mocker, timeout):
+    client = getswish.SwishClient(timeout=timeout)
+    request = mocker.patch.object(requests, "put", return_value=RequestsMockResponse(headers={}))
+
+    client.create_payment(20.0, callback_url)
+
+    assert request.call_args.kwargs["timeout"] == timeout
+    assert "timeout" not in request.call_args.kwargs["json"]
+
+
+@pytest.mark.parametrize("timeout", [3.0, (1.0, 5.0), None])
+def test_requests_explicit_timeout_override(client, mocker, timeout):
+    request = mocker.patch.object(requests, "get", return_value=RequestsMockResponse())
+
+    client._requests("get", "https://example.com", timeout=timeout)
+
+    assert request.call_args.kwargs["timeout"] == timeout
 
 
 def test_requests_http_error(client, callback_url, mocker):
@@ -198,6 +284,18 @@ def test_requests_create_payment(client, callback_url, t_payment_response, t_pay
     assert response.payment_request_token == "payment_token"
 
 
+@pytest.mark.parametrize("payee_alias", [None, "1234567890"])
+def test_create_payment_payee_alias(client, callback_url, mocker, payee_alias):
+    patched_put = mocker.patch.object(requests, "put", return_value=RequestsMockResponse(201, headers={}))
+    options = {} if payee_alias is None else {"payee_alias": payee_alias}
+
+    payment = client.create_payment(20.0, callback_url, **options)
+
+    expected = payee_alias or client.merchant_swish_number
+    assert payment.payee_alias == expected
+    assert patched_put.call_args.kwargs["json"]["payeeAlias"] == expected
+
+
 def test_requests_retrieve_payment(client, callback_url, t_payment_response, mocker):
     mocker.patch.object(requests, "get", return_value=RequestsMockResponse(200, t_payment_response))
     response = client.retrieve_payment(t_payment_response["id"])
@@ -249,6 +347,12 @@ def test_requests_create_payout_signature_matches_posted_payload(client, mocker,
     assert payload["callbackUrl"] is None
     assert payload["payeeSSN"] == "198810236383"
     assert payload["payerPaymentReference"] == "order-123"
+    instruction_date = payload["instructionDate"]
+    assert instruction_date.endswith("Z")
+    assert len(instruction_date) == len("2026-10-21T12:34:56Z")
+    parsed_date = datetime.fromisoformat(instruction_date.replace("Z", "+00:00"))
+    assert parsed_date.tzinfo == timezone.utc
+    assert parsed_date.microsecond == 0
 
     certificate = x509.load_pem_x509_certificate(Path(client.certificates.signing.public).read_bytes())
     assert payload["signingCertificateSerialNumber"] == format(certificate.serial_number, "X")

@@ -14,65 +14,79 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
         with:
+          version: "0.13.1"
           python-version: ${{ matrix.python }}
       - name: Install package
-        run: |
-          python -m pip install -U pip
-          python -m pip install -e .[tests]
+        run: uv sync --locked
       - name: Run pytest
-        run: pytest
+        run: uv run --locked pytest
 
   coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
         with:
+          version: "0.13.1"
           python-version: "3.15"
       - name: Install package
-        run: |
-          python -m pip install -U pip
-          python -m pip install -e .[tests]
+        run: uv sync --locked
       - name: Run pytest coverage
-        run: pytest --cov=src
+        run: uv run --locked pytest --cov=src
 
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
         with:
+          version: "0.13.1"
           python-version: "3.15"
       - name: Install package
-        run: |
-          python -m pip install -U pip
-          python -m pip install -e .[tests]
+        run: uv sync --locked
       - name: Run ruff
-        run: ruff check src
+        run: uv run --locked ruff check src
+
+  types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.1"
+          python-version: "3.10"
+      - name: Install package
+        run: uv sync --locked
+      - name: Run ty
+        run: uv run --locked ty check src
 
   package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
         with:
+          version: "0.13.1"
           python-version: "3.15"
-      - name: Install build tools
-        run: |
-          python -m pip install -U pip
-          python -m pip install build twine
+      - name: Install development tools
+        run: uv sync --locked
       - name: Build package
-        run: python -m build
+        run: uv build
       - name: Check package
-        run: twine check dist/*
-      - name: Test installed certificate resources
+        run: uv run --locked twine check dist/getswish-*.whl dist/getswish-*.tar.gz
+      - name: Test installed certificate resources from wheel and sdist
         working-directory: ${{ runner.temp }}
         run: |
-          python -m pip install "$GITHUB_WORKSPACE"/dist/*.whl pytest "cryptography >= 42"
-          python -I -m pytest "$GITHUB_WORKSPACE/tests/test_environments.py" --import-mode=importlib
+          for artifact in "$GITHUB_WORKSPACE"/dist/*.whl "$GITHUB_WORKSPACE"/dist/*.tar.gz; do
+            environment="$(mktemp -d "$RUNNER_TEMP/getswish-install-XXXXXX")"
+            uv venv --python 3.15 "$environment"
+            uv pip install --python "$environment/bin/python" "$artifact" pytest 'cryptography >= 42'
+            "$environment/bin/python" -I -m pytest "$GITHUB_WORKSPACE/tests/test_environments.py" --import-mode=importlib
+          done

@@ -2,6 +2,7 @@ import base64
 import hashlib
 import json
 import logging
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -23,22 +24,37 @@ class SwishClient:
     environment: Environment | None = None
     certificates: Certificates | None = None
     merchant_swish_number: str = "1234679304"
+    timeout: float | tuple[float, float] | None = (10.0, 30.0)
 
     def __post_init__(self):
         if self.environment is None and self.certificates is None:
-            self.environment = TestEnvironment
-            self.certificates = TestCertificates
+            self.environment = deepcopy(TestEnvironment)
+            self.certificates = deepcopy(TestCertificates)
+        if self.environment is None or self.certificates is None:
+            raise ValueError("environment and certificates must be provided together")
         logger.debug("getswish.env: %s", self.environment.name)
 
+    @property
+    def _environment(self) -> Environment:
+        if self.environment is None:
+            raise ValueError("environment is required")
+        return self.environment
+
+    @property
+    def _certificates(self) -> Certificates:
+        if self.certificates is None:
+            raise ValueError("certificates are required")
+        return self.certificates
+
     def _url(self, version: str, path: str) -> str:
-        return f"{self.environment.base}{version}{path}"
+        return f"{self._environment.base}{version}{path}"
 
     def _recurring_url(self, path: str) -> str:
-        base = self.environment.recurring_base or self.environment.base
+        base = self._environment.recurring_base or self._environment.base
         return f"{base}{path}"
 
     def _qr_url(self, path: str) -> str:
-        base = self.environment.qr_base or self.environment.base
+        base = self._environment.qr_base or self._environment.base
         return f"{base}{path}"
 
     def _partner_headers(self, on_behalf_of: str | None = None, headers: dict | None = None) -> dict | None:
@@ -50,13 +66,17 @@ class SwishClient:
     def _requests(self, method: str, url: str, /, **kwargs) -> Response:
         """Add client certificates and raise SwishError for HTTP error responses."""
 
+        certificates = self._certificates
+        if certificates.communication is None or certificates.verify is None:
+            raise ValueError("communication and verify certificates are required")
         kwargs.update(
             cert=(
-                self.certificates.communication.public,
-                self.certificates.communication.private_key,
+                certificates.communication.public,
+                certificates.communication.private_key,
             ),
-            verify=self.certificates.verify.public,
+            verify=certificates.verify.public,
         )
+        kwargs.setdefault("timeout", self.timeout)
         response = getattr(requests, method)(url=url, **kwargs)
         if 400 <= response.status_code < 600:
             try:
@@ -72,10 +92,12 @@ class SwishClient:
         https://developer.swish.nu/documentation/getting-started/swish-payout-api
         """
 
-        assert self.certificates.signing is not None
+        signing = self._certificates.signing
+        if signing is None or signing.private_key is None:
+            raise ValueError("signing certificate private key is required for payouts")
         payload_json_encoded = json.dumps(payload).encode("utf-8")
         payload_hash = hashlib.sha512(payload_json_encoded).digest()
-        with open(self.certificates.signing.private_key, mode="rb") as private_file:
+        with open(signing.private_key, mode="rb") as private_file:
             key_data = private_file.read()
         private_key = rsa.PrivateKey.load_pkcs1(key_data)
         signature = rsa.sign(payload_hash, private_key, "SHA-512")
@@ -93,7 +115,7 @@ class SwishClient:
         """https://developer.swish.nu/api/payment-request/v2#create-payment-request"""
 
         payment = Payment(
-            payee_alias=kwargs.get("payee_alias", self.merchant_swish_number),
+            payee_alias=kwargs.pop("payee_alias", self.merchant_swish_number),
             payer_alias=payer_alias,
             amount=amount,
             callback_url=callback_url,
@@ -167,14 +189,17 @@ class SwishClient:
     ) -> Payout:
         """https://developer.swish.nu/api/payouts/v1#create-payout"""
 
+        signing = self._certificates.signing
+        if signing is None:
+            raise ValueError("signing certificate is required for payouts")
         payout = Payout(
             payer_payment_reference=payer_payment_reference,
             payee_alias=payee_alias,
             payee_ssn=payee_ssn,
             amount=amount,
             payer_alias=kwargs.pop("payer_alias", self.merchant_swish_number),
-            instruction_date=datetime.now(timezone.utc).isoformat(timespec="seconds") + "Z",
-            signing_certificate_serial_number=self.certificates.signing.public_serial,
+            instruction_date=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+            signing_certificate_serial_number=signing.public_serial,
             **kwargs,
         )
         payout.payout_instruction_uuid = payout.payout_instruction_uuid or generate_transaction_id()
