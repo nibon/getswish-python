@@ -48,7 +48,7 @@ class SwishClient:
         return request_headers or None
 
     def _requests(self, method: str, url: str, /, **kwargs) -> Response:
-        """Requests wrapper that add client certificates and handles api errors and raise http status errors."""
+        """Add client certificates and raise SwishError for HTTP error responses."""
 
         kwargs.update(
             cert=(
@@ -58,15 +58,12 @@ class SwishClient:
             verify=self.certificates.verify.public,
         )
         response = getattr(requests, method)(url=url, **kwargs)
-        if response.status_code in {400, 415, 422}:
+        if 400 <= response.status_code < 600:
             try:
                 errors = response.json()
-                if errors:
-                    raise SwishError(errors)
             except ValueError:
-                if response.text:
-                    raise SwishError(response.text)
-        response.raise_for_status()
+                errors = response.text
+            raise SwishError(errors, response=response)
         return response
 
     def _sign_payload(self, payload: dict) -> str:

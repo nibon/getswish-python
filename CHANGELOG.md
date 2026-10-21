@@ -7,8 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- All HTTP 4xx/5xx responses now raise `SwishError`, including empty bodies and statuses previously raised as
+  `requests.HTTPError`. JSON and text error details are preserved; empty errors fall back to the HTTP status.
+- `SwishError` now inherits from `requests.HTTPError` and exposes the original `response` and its `request`.
+  Existing `HTTPError` and `RequestException` handlers now also catch `SwishError`; put specific `SwishError`
+  handlers first. Network, timeout, and TLS exceptions remain unchanged.
+- Existing `SwishError` handlers now also receive authentication, rate-limit, and server errors, not just
+  payment rejections. Inspect `response.status_code` to distinguish them.
+
+Error-handling example (using an existing client and callback URL):
+
+```python
+import requests
+import getswish
+
+try:
+    payment = swish_client.create_payment(100.00, callback_url)
+except getswish.SwishError as error:
+    print(error.response.status_code, error.errors, error.trace_id)
+except requests.RequestException as error:
+    print("Request failed:", error)
+```
+
 ### Fixed
 
+- Preserved empty JSON/text values in `SwishError.raw_errors` and safely normalized unexpected error fields to strings.
 - Updated default test credentials to MSS 3.0 and bundled them inside the package for installed clients.
 
 ## [0.4.0] - 2026-10-20

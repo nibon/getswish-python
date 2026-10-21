@@ -222,6 +222,27 @@ The signing certificate `public_serial` is extracted from the certificate using 
 
     openssl x509 -in Swish_Merchant_TestSigningCertificate_1234679304.pem -serial -noout
 
+## Error handling
+
+All HTTP 4xx/5xx responses raise `getswish.SwishError`, including responses with empty bodies.
+It inherits from `requests.HTTPError` (and `requests.RequestException`). Inspect `errors` for normalized error
+messages, `raw_errors` for the unchanged parsed JSON or response text, `trace_id` when supplied, and
+`response.status_code` to distinguish rejections, authentication failures, rate limits, and server errors.
+Unexpected error fields are converted to strings; empty errors use an HTTP status message without changing `raw_errors`.
+Connection failures, timeouts, and TLS errors retain their Requests exception types.
+
+```python
+import requests
+import getswish
+
+try:
+    payment = swish_client.create_payment(100.00, callback_url)
+except getswish.SwishError as error:
+    print(error.response.status_code, error.errors, error.trace_id)
+except requests.RequestException as error:
+    print("Request failed:", error)
+```
+
 ## Development setup
 
 Clone the repository and set up a local virtual environment.

@@ -114,7 +114,7 @@ def test_requests_swish_error_text(client, callback_url, mocker):
     assert e_info.value.errors == {"error": "bad gateway"}
 
 
-@pytest.mark.parametrize("status", [400, 415])
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 415, 422, 429, 500, 503, 599])
 def test_requests_swish_error_non_json_text(client, callback_url, mocker, status):
     response = RequestsMockResponse(status, text="request rejected")
     response.json = lambda: (_ for _ in ()).throw(ValueError())
@@ -122,29 +122,72 @@ def test_requests_swish_error_non_json_text(client, callback_url, mocker, status
     with pytest.raises(getswish.SwishError) as error:
         client.create_payment(20.0, callback_url)
     assert error.value.errors == {"error": "request rejected"}
+    assert error.value.raw_errors == "request rejected"
+    assert error.value.response is response
 
 
-@pytest.mark.parametrize("status", [400, 401, 415, 422, 500])
-def test_requests_empty_error_body_raises_http_error(client, mocker, status):
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 415, 422, 429, 500, 503, 599])
+def test_requests_empty_error_body_raises_swish_error(client, mocker, status):
     response = RequestsMockResponse(status)
     response.json = lambda: (_ for _ in ()).throw(ValueError())
     mocker.patch.object(requests, "post", return_value=response)
-    with pytest.raises(HTTPError):
+    with pytest.raises(getswish.SwishError) as error:
         client.create_commerce_qr_code("commerce-token", "png")
+    assert error.value.errors == {"error": f"HTTP {status}"}
+    assert error.value.raw_errors == ""
+    assert error.value.response is response
 
 
-@pytest.mark.parametrize("json_data", [[], {}])
-def test_requests_empty_json_error_raises_http_error(client, callback_url, mocker, json_data):
+@pytest.mark.parametrize("json_data", [[], {}, None, False, 0, ""])
+def test_requests_empty_json_error_raises_swish_error(client, callback_url, mocker, json_data):
     mocker.patch.object(requests, "put", return_value=RequestsMockResponse(422, json_data))
-    with pytest.raises(HTTPError):
+    with pytest.raises(getswish.SwishError) as error:
         client.create_payment(20.0, callback_url)
+    assert error.value.errors == {"error": "HTTP 422"}
+    assert error.value.raw_errors is json_data
 
 
-def test_requests_other_status_json_error_raises_http_error(client, mocker):
+def test_requests_unexpected_json_error_raises_swish_error(client, mocker):
+    payload = {"errorCode": ["upstream"], "errorMessage": {"detail": "failed"}}
+    response = requests.Response()
+    response.status_code = 500
+    response._content = json.dumps(payload).encode()
+    mocker.patch.object(requests, "get", return_value=response)
+    with pytest.raises(getswish.SwishError) as caught:
+        client._requests("get", "https://example.com")
+    assert caught.value.errors == {"['upstream']": "{'detail': 'failed'}"}
+    assert caught.value.raw_errors == payload
+    assert caught.value.response is response
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 415, 422, 429, 500, 503, 599])
+def test_requests_json_error_raises_swish_error(client, mocker, status):
     error = {"errorCode": "server-error", "errorMessage": "failed"}
-    mocker.patch.object(requests, "post", return_value=RequestsMockResponse(500, error))
-    with pytest.raises(HTTPError):
+    response = RequestsMockResponse(status, error)
+    mocker.patch.object(requests, "post", return_value=response)
+    with pytest.raises(getswish.SwishError) as caught:
         client.create_commerce_qr_code("commerce-token", "png")
+    assert caught.value.errors == {"server-error": "failed"}
+    assert caught.value.raw_errors == error
+    assert caught.value.response is response
+
+
+@pytest.mark.parametrize("status", [200, 201, 204, 302])
+def test_requests_success_response_unchanged(client, mocker, status):
+    response = RequestsMockResponse(status)
+    parse_json = mocker.patch.object(response, "json")
+    mocker.patch.object(requests, "get", return_value=response)
+    assert client._requests("get", "https://example.com") is response
+    parse_json.assert_not_called()
+
+
+@pytest.mark.parametrize("exception", [requests.ConnectionError, requests.Timeout, requests.exceptions.SSLError])
+def test_requests_transport_error_unchanged(client, mocker, exception):
+    failure = exception("request failed")
+    mocker.patch.object(requests, "get", side_effect=failure)
+    with pytest.raises(exception) as caught:
+        client._requests("get", "https://example.com")
+    assert caught.value is failure
 
 
 def test_requests_create_payment(client, callback_url, t_payment_response, t_payment_created_headers, mocker):
