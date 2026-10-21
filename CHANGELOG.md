@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retaining Python 3.10 support.
 - Added a development lockfile and source-only ty checking.
 - Included a `py.typed` marker for downstream type checking.
+- Declared public package exports with `__all__` and made the version metadata helper private.
 - Added configurable client HTTP timeouts, defaulting to 10 seconds to connect and 30 seconds to read.
   Set `timeout=None` to restore unlimited waiting; timeout exceptions retain their Requests types.
 - Added experimental Recurring Payments API: `create_recurring_ecommerce_consent`, `create_recurring_mcommerce_consent`,

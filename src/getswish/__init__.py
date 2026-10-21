@@ -1,10 +1,27 @@
 """Getswish python client library"""
 
-from importlib.metadata import version
+from importlib.metadata import version as _version
 
-from .client import SwishClient  # noqa F401
-from .environments import Certificate, Certificates, Environment, ProductionEnvironment, TestEnvironment  # noqa F401
-from .exceptions import SwishError  # noqa F401
-from .models import Payment, Payout, RecurringAvailability, RecurringConsent, RecurringPayment, Refund  # noqa F401
+from .client import SwishClient
+from .environments import Certificate, Certificates, Environment, ProductionEnvironment, TestEnvironment
+from .exceptions import SwishError
+from .models import Payment, Payout, RecurringAvailability, RecurringConsent, RecurringPayment, Refund
 
-__version__ = version("getswish")
+__all__ = [
+    "Certificate",
+    "Certificates",
+    "Environment",
+    "Payment",
+    "Payout",
+    "ProductionEnvironment",
+    "RecurringAvailability",
+    "RecurringConsent",
+    "RecurringPayment",
+    "Refund",
+    "SwishClient",
+    "SwishError",
+    "TestEnvironment",
+    "__version__",
+]
+
+__version__ = _version("getswish")
