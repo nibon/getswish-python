@@ -24,6 +24,7 @@ class SwishClient:
     environment: Environment | None = None
     certificates: Certificates | None = None
     merchant_swish_number: str = "1234679304"
+    timeout: float | tuple[float, float] | None = (10.0, 30.0)
 
     def __post_init__(self):
         if self.environment is None and self.certificates is None:
@@ -75,6 +76,7 @@ class SwishClient:
             ),
             verify=certificates.verify.public,
         )
+        kwargs.setdefault("timeout", self.timeout)
         response = getattr(requests, method)(url=url, **kwargs)
         if 400 <= response.status_code < 600:
             try:

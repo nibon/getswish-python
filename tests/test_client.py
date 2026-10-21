@@ -126,6 +126,35 @@ def test_requests_missing_certificate(client, missing):
         client._requests("get", "https://example.com")
 
 
+@pytest.mark.parametrize("method", ["get", "post", "put", "patch", "delete"])
+def test_requests_default_timeout(client, mocker, method):
+    request = mocker.patch.object(requests, method, return_value=RequestsMockResponse())
+
+    client._requests(method, "https://example.com")
+
+    assert request.call_args.kwargs["timeout"] == (10.0, 30.0)
+
+
+@pytest.mark.parametrize("timeout", [5.0, (2.0, 15.0), None])
+def test_client_custom_timeout(callback_url, mocker, timeout):
+    client = getswish.SwishClient(timeout=timeout)
+    request = mocker.patch.object(requests, "put", return_value=RequestsMockResponse(headers={}))
+
+    client.create_payment(20.0, callback_url)
+
+    assert request.call_args.kwargs["timeout"] == timeout
+    assert "timeout" not in request.call_args.kwargs["json"]
+
+
+@pytest.mark.parametrize("timeout", [3.0, (1.0, 5.0), None])
+def test_requests_explicit_timeout_override(client, mocker, timeout):
+    request = mocker.patch.object(requests, "get", return_value=RequestsMockResponse())
+
+    client._requests("get", "https://example.com", timeout=timeout)
+
+    assert request.call_args.kwargs["timeout"] == timeout
+
+
 def test_requests_http_error(client, callback_url, mocker):
     mocker.patch.object(requests, "put", return_value=RequestsMockResponse(400))
     with pytest.raises(HTTPError):

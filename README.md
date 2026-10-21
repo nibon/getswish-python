@@ -40,6 +40,12 @@ swish_client = getswish.SwishClient()
 callback_url = "https://example.com/callback/"
 ```
 
+All requests default to a 10-second connect timeout and a 30-second read timeout.
+Configure these with `getswish.SwishClient(timeout=(5.0, 60.0))`, use a single number for both,
+or set `timeout=None` to disable timeouts. The read timeout limits waiting between received data,
+not the total request duration. Timeouts raise Requests exceptions, not `SwishError`.
+After a payment or payout timeout, check its status before retrying; the server may have accepted it.
+
 ### Example - Commerce API
 
 ```python
