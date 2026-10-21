@@ -7,8 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-20
+
+### Added
+
+- Added Python 3.14 and stable Python 3.15 to the required CI test matrix and package classifiers,
+  retaining Python 3.10 support.
+- Added a development lockfile and source-only ty checking.
+- Included a `py.typed` marker for downstream type checking.
+- Added experimental Recurring Payments API: `create_recurring_ecommerce_consent`, `create_recurring_mcommerce_consent`,
+  `update_recurring_consent_callback_url`, `retrieve_recurring_consent`, `delete_recurring_consent`,
+  `create_recurring_payment`, `retrieve_recurring_payment`, `check_recurring_tin_availability`,
+  `check_recurring_alias_availability`.
+- Added experimental QR Code API: `create_prefilled_qr_code`, `create_commerce_qr_code`.
+- Added `RecurringConsent`, `RecurringPayment`, `RecurringAvailability` model classes.
+- Added `SwishError.raw_errors` and `SwishError.trace_id` attributes; `SwishError` now accepts
+  `list[dict] | dict | str` inputs.
+- Added `recurring_base` and `qr_base` fields to `Environment`.
+- Added `_recurring_url` and `_qr_url` URL helpers to `SwishClient`.
+- Added `on_behalf_of` (partner header) support to recurring methods.
+- Added CI workflow gates: Ruff lint, ty type checking, package build, Twine validation, and isolated
+  installed-certificate checks for wheel and source distributions.
+- Added Python 3.10-3.13 classifiers to `pyproject.toml`.
+
 ### Changed
 
+- Migrated maintainer setup, checks, builds, version bumps, and publishing to native uv commands and the
+  `uv_build` backend, replacing Make, Nox, Flit, and the custom version-bumping script.
+- Moved the package version to `pyproject.toml`; `getswish.__version__` reads installed package metadata.
+  Release bumps update project metadata and lockfile without automatically committing or tagging.
+- Incomplete environment/certificates configuration and missing required request or payout certificates now raise
+  `ValueError` instead of incidental `AttributeError` or `AssertionError`.
 - All HTTP 4xx/5xx responses now raise `SwishError`, including empty bodies and statuses previously raised as
   `requests.HTTPError`. JSON and text error details are preserved; empty errors fall back to the HTTP status.
 - `SwishError` now inherits from `requests.HTTPError` and exposes the original `response` and its `request`.
@@ -16,6 +45,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   handlers first. Network, timeout, and TLS exceptions remain unchanged.
 - Existing `SwishError` handlers now also receive authentication, rate-limit, and server errors, not just
   payment rejections. Inspect `response.status_code` to distinguish them.
+- Moved CI coverage, lint, and package checks to Python 3.15 and aligned Ruff's target with the Python 3.10 minimum.
+- Marked Recurring and QR APIs experimental in 0.4.0; contract validation and stabilization are deferred to 0.5.0.
+- Recurring endpoints corrected to match Swish documentation: id-bearing PUT/POST paths,
+  `PUT .../callback` for callback updates, `POST` with request body for availability checks,
+  `/payments/single/{paymentId}/status` for payment retrieval.
+- QR prefilled payload now uses nested `{"value": ..., "editable": bool}` objects for
+  `payee`, `amount`, and `message` fields per Swish QR API spec.
+- `RecurringConsent` model updated: `consent_id` replaces `id`; `sub_status`, `activated_at`,
+  `payer_tin` fields added; nested payer/payee objects handled in `to_service`/`from_service`.
+- `RecurringPayment` model updated: `payment_id` replaces `id`; `sub_status`, `status_at` fields
+  added; nested payer/payee and amount objects handled in `to_service`/`from_service`.
+- `RecurringAvailability` simplified to `recurring_is_offered` field matching service response.
+- Updated type hints to use `str | None` union syntax throughout.
+- Updated README development and release instructions to use uv and documented all commands.
 
 Error-handling example (using an existing client and callback URL):
 
@@ -33,51 +76,8 @@ except requests.RequestException as error:
 
 ### Fixed
 
+- Fixed custom payment payee aliases, UTC payout instruction timestamps, and shared mutable default client configuration.
 - Preserved empty JSON/text values in `SwishError.raw_errors` and safely normalized unexpected error fields to strings.
-- Updated default test credentials to MSS 3.0 and bundled them inside the package for installed clients.
-
-## [0.4.0] - 2026-10-20
-
-### Added
-
-- Added stable Python 3.15 to the required CI and Nox test matrices and package classifiers, retaining Python 3.10 support.
-- Added Makefile commands for checks, version-only bump commits, and Flit builds/publication.
-- Added experimental Recurring Payments API: `create_recurring_ecommerce_consent`, `create_recurring_mcommerce_consent`,
-  `update_recurring_consent_callback_url`, `retrieve_recurring_consent`, `delete_recurring_consent`,
-  `create_recurring_payment`, `retrieve_recurring_payment`, `check_recurring_tin_availability`,
-  `check_recurring_alias_availability`.
-- Added experimental QR Code API: `create_prefilled_qr_code`, `create_commerce_qr_code`.
-- Added `RecurringConsent`, `RecurringPayment`, `RecurringAvailability` model classes.
-- Added `SwishError.raw_errors` and `SwishError.trace_id` attributes; `SwishError` now accepts
-  `list[dict] | dict | str` inputs.
-- Added `recurring_base` and `qr_base` fields to `Environment`.
-- Added `_recurring_url` and `_qr_url` URL helpers to `SwishClient`.
-- Added `on_behalf_of` (partner header) support to recurring methods.
-- Added Python 3.14 to nox and CI matrix.
-- Added CI workflow gates: ruff lint, package build, and twine check.
-- Added Python 3.10–3.14 classifiers to `pyproject.toml`.
-
-### Changed
-
-- Moved CI coverage, lint, and package checks to Python 3.15 and aligned Ruff's target with the Python 3.10 minimum.
-- Marked Recurring and QR APIs experimental in 0.4.0; contract validation and stabilization are deferred to 0.5.0.
-- Recurring endpoints corrected to match Swish documentation: id-bearing PUT/POST paths,
-  `PUT .../callback` for callback updates, `POST` with request body for availability checks,
-  `/payments/single/{paymentId}/status` for payment retrieval.
-- QR prefilled payload now uses nested `{"value": ..., "editable": bool}` objects for
-  `payee`, `amount`, and `message` fields per Swish QR API spec.
-- `RecurringConsent` model updated: `consent_id` replaces `id`; `sub_status`, `activated_at`,
-  `payer_tin` fields added; nested payer/payee objects handled in `to_service`/`from_service`.
-- `RecurringPayment` model updated: `payment_id` replaces `id`; `sub_status`, `status_at` fields
-  added; nested payer/payee and amount objects handled in `to_service`/`from_service`.
-- `RecurringAvailability` simplified to `recurring_is_offered` field matching service response.
-- `_requests` now raises `SwishError` on 400 and 415 status codes (in addition to 422) when the
-  response body contains error details.
-- Updated type hints to use `str | None` union syntax throughout.
-- Updated README development setup to use `pip install -e .[tests]` and documented all commands.
-
-### Fixed
-
 - Replaced expired MSS 2.0 test credentials with MSS 3.0 credentials and included them in installed packages.
 - Corrected the README Commerce QR example to use a fresh pending M-commerce payment token and repaired its code blocks.
 - Corrected the README refund example to use the completed payment's reference and payer alias.

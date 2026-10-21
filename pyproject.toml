@@ -1,7 +1,10 @@
 [project]
 name = "getswish"
+version = "0.4.0"
+description = "Getswish python client library"
 authors = [{ name = "Daniel Nibon", email = "daniel@nibon.se" }]
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 keywords = ["swish", "getswish", "payment", "payout"]
 requires-python = ">=3.10"
@@ -11,7 +14,6 @@ dependencies = [
 ]
 classifiers = [
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -21,56 +23,37 @@ classifiers = [
     "Programming Language :: Python :: 3.15",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-dynamic = ["version", "description"]
 
 [project.urls]
 Source = "https://github.com/nibon/getswish-python"
 
-[project.optional-dependencies]
-tests = [
+[dependency-groups]
+dev = [
     "pytest >= 7",
     "pytest-mock",
     "pytest-cov >= 4",
     "cryptography >= 42",
     "ruff",
-    "nox",
-]
-deploy = [
-    "flit >= 3.8",
+    "twine",
+    "ty",
 ]
 
 [build-system]
-requires = ["flit_core >=3.8.0,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["uv_build >=0.13.1,<0.14"]
+build-backend = "uv_build"
 
-[tool.ruff.lint.isort]
-force-sort-within-sections = true
+[tool.uv.build-backend]
+source-include = ["tests/**", "CHANGELOG.md"]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
 
 [tool.ruff.lint]
 select = ["E", "F"]
-ignore = []
-fixable = [
-    "A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE",
-    "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH",
-    "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"
-]
-unfixable = []
-exclude = [
-    "venv",
-    ".venv",
-    "tests",
-    ".git",
-    ".ruff_cache",
-    ".tox",
-    ".venv",
-    "__pypackages__",
-    "dist",
-    "node_modules",
-]
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
-
-[tool.ruff.lint.mccabe]
-max-complexity = 10
+exclude = ["venv", "tests"]
 
 [tool.ruff]
 target-version = "py310"

@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+from importlib.metadata import version
+from importlib.resources import files
 from pathlib import Path
 import ssl
 
@@ -8,6 +10,14 @@ import pytest
 import rsa
 
 import getswish
+
+
+def test_installed_version_matches_metadata():
+    assert getswish.__version__ == version("getswish")
+
+
+def test_package_includes_typing_marker():
+    assert files("getswish").joinpath("py.typed").is_file()
 
 
 def test_default_certificates_are_package_resources():

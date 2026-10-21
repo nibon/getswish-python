@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 
 
 def snake2camel(snake_str: str) -> str:
@@ -27,6 +28,6 @@ _name_map = {
 _name_map_rev = {v: k for k, v in _name_map.items()}
 
 
-def f_name_conv(field_name: str, conversion_function: callable, rev: bool = False) -> str:
+def f_name_conv(field_name: str, conversion_function: Callable[[str], str], rev: bool = False) -> str:
     """Converts the field_name using the table firstly if found, else the given conversion function given."""
     return (_name_map_rev if rev else _name_map).get(field_name, conversion_function(field_name))
