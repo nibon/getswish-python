@@ -444,7 +444,7 @@ class SwishClient:
             "post",
             self._qr_url("v1/commerce"),
             json=payload,
-            headers={"Accept": "image/svg+xml" if qr_format == "svg" else f"image/{qr_format}"},
+            headers={"Accept": "*/*"},
         )
         if qr_format == "svg":
             return response.content.decode("utf-8")

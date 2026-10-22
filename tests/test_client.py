@@ -568,32 +568,30 @@ def test_requests_create_prefilled_qr_code_swish_error(client, mocker):
     assert e_info.value.errors == {"error": "qr error"}
 
 
-def test_requests_create_commerce_qr_code(client, mocker):
+@pytest.mark.parametrize(
+    ("qr_format", "content_type", "content", "expected"),
+    [
+        ("png", "image/png", b"commerce-png", b"commerce-png"),
+        ("jpg", "image/jpeg", b"commerce-jpg", b"commerce-jpg"),
+        ("svg", "image/svg+xml", b"<svg />", "<svg />"),
+    ],
+)
+def test_requests_create_commerce_qr_code(client, mocker, qr_format, content_type, content, expected):
     patched_post = mocker.patch.object(
         requests,
         "post",
-        return_value=RequestsMockResponse(200, headers={"Content-Type": "image/png"}, content=b"commerce-png"),
+        return_value=RequestsMockResponse(200, headers={"Content-Type": content_type}, content=content),
     )
-    response = client.create_commerce_qr_code("commerce-token", "png", size=300)
-    assert response == b"commerce-png"
+    response = client.create_commerce_qr_code("commerce-token", qr_format, size=300)
+    assert response == expected
     assert patched_post.call_args.kwargs["url"] == client._qr_url("v1/commerce")
-    assert patched_post.call_args.kwargs["json"] == {"token": "commerce-token", "format": "png", "size": 300}
-    assert patched_post.call_args.kwargs["headers"] == {"Accept": "image/png"}
+    assert patched_post.call_args.kwargs["json"] == {"token": "commerce-token", "format": qr_format, "size": 300}
+    assert patched_post.call_args.kwargs["headers"] == {"Accept": "*/*"}
 
 
 def test_requests_create_commerce_qr_invalid_format(client):
     with pytest.raises(ValueError, match="qr_format"):
         client.create_commerce_qr_code("token", "bmp")
-
-
-def test_requests_create_commerce_svg_qr_code(client, mocker):
-    patched_post = mocker.patch.object(
-        requests,
-        "post",
-        return_value=RequestsMockResponse(200, headers={"Content-Type": "image/svg+xml"}, content=b"<svg />"),
-    )
-    assert client.create_commerce_qr_code("commerce-token", "svg") == "<svg />"
-    assert patched_post.call_args.kwargs["headers"] == {"Accept": "image/svg+xml"}
 
 
 def test_requests_create_commerce_svg_qr_code_unexpected_content_type(client, mocker):

@@ -1,6 +1,6 @@
 [project]
 name = "getswish"
-version = "0.4.0"
+version = "0.4.1"
 description = "Getswish python client library"
 authors = [{ name = "Daniel Nibon", email = "daniel@nibon.se" }]
 license = "MIT"
